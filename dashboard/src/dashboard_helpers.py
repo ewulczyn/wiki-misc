@@ -26,6 +26,13 @@ class Test(object):
         else:
             self.data = get_banner_data(OldBannerDataRetriever, self.names, self.start, self.stop)
 
+        for name in self.names:
+            self.data[name]['clean_donations'] = self.get_clean_donations(self.data[name]['donations'])
+
+
+    def get_clean_donations(self, donations):
+        clean_donations =  donations[np.abs(donations.amount-donations.amount.mean()) <= (3*donations.amount.std())]
+        return clean_donations
     def combine(self, names, combination_name):
 
         """
@@ -61,6 +68,8 @@ class Test(object):
         combined_impressions = pd.concat([self.data[name]['impressions'] for name in names], axis=0)
         combined_impressions = combined_impressions.groupby(combined_impressions.index).sum()
         self.data[combination_name]['impressions'] = combined_impressions
+
+        self.data[combination_name]['clean_donations'] = self.get_clean_donations(self.data[combination_name]['donations'])
 
         self.names.append(combination_name)
 
@@ -470,14 +479,8 @@ class Test(object):
         # use donation data with outliers removed by defualt
         if remove_outliers:
 
-            # add donation data where outliers have been removed
-            a_df = self.data[a]['donations']
-            b_df = self.data[a]['donations']
-            #keep only the ones that are within +3 to -3 standard deviations.
-            a_df = a_df[np.abs(a_df.amount-a_df.amount.mean()) <= (3*a_df.amount.std())]
-            b_df = b_df[np.abs(b_df.amount-b_df.amount.mean()) <= (3*b_df.amount.std())]
-            a_event_values = a_df['amount']
-            b_event_values = b_df['amount']
+            a_event_values = self.data[a]['clean_donations']['amount']
+            b_event_values = self.data[b]['clean_donations']['amount']
 
         else:
             a_event_values = self.data[a]['donations']['amount']

@@ -5,7 +5,10 @@ import numpy as np
 
 
 
-
+def remove_outliers(d):
+    """takes in a padas series of real numbers and removes outlier"""
+    return d[np.abs(d-d.mean()) <= (3*d.std())]
+   
 
 def difference_in_means_confidence_interval(A_donation_amounts, A_num_events, B_donation_amounts, B_num_events, alpha = 0.05):
 
