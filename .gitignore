@@ -6,6 +6,7 @@ __pycache__/
 *.tsv
 *.csv
 *.png
+*.ipynb_checkpoints
 #OSX
 *.DS_Store
 
