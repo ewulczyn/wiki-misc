@@ -42,3 +42,10 @@ def query_hive_ssh(query, file_name):
     d = pd.read_csv(file_name,  sep='\t')
     os.system('rm ' + file_name)
     return d
+
+def query_stat_ssh(query, file_name):
+        cmd = """ssh stat1002.eqiad.wmnet "mysql --defaults-file=/etc/mysql/conf.d/analytics-research-client.cnf -h analytics-store.eqiad.wmnet -u research -e \\" """ +query+ """ \\" --socket  /tmp/mysql.sock  "> """+ file_name
+        os.system(cmd)
+        d = pd.read_csv(file_name,  sep='\t')
+        os.system('rm ' + file_name)
+        return d

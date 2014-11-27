@@ -1,0 +1,47 @@
+{
+	"folders":
+	[
+		{
+			"follow_symlinks": true,
+			"path": "."
+		}
+	],
+	"settings":
+	{
+		"rsync_ssh":
+		{
+			"excludes":
+			[
+				".git*",
+				"_build",
+				"blib",
+				"Build"
+			],
+			"options":
+			[
+				"--delete"
+			],
+			"remotes":
+			{
+				".":
+				[
+					{
+						"enabled": 1,
+						"excludes":
+						[
+						],
+						"options":
+						[
+						],
+						"remote_host": "stat1003.wikimedia.org",
+						"remote_path": "/home/ellery/fr/mobile_vs_desktop_trends",
+						"remote_port": 22,
+						"remote_post_command": "",
+						"remote_pre_command": "",
+						"remote_user": "ellery"
+					}
+				]
+			}
+		}
+	}
+}

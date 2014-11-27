@@ -1,0 +1,3 @@
+MAILTO=ewulczyn@wikimedia.org
+0 * * * * python  /home/ellery/record_impression/hive/import_impressions.py
+
