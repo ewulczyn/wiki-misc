@@ -2,6 +2,15 @@
 from scipy.stats import norm
 from numpy.random import  beta
 import numpy as np
+from statsmodels.stats.power import tt_ind_solve_power
+
+
+
+def samples_per_branch_calculator(u_hat, mde=0.05, alpha=0.05, power=0.95):
+    var_hat = u_hat*(1-u_hat)
+    standardized_effect_size =  (u_hat - (u_hat*(1+mde))) / np.sqrt(var_hat)
+    sample_size = tt_ind_solve_power(effect_size=standardized_effect_size, alpha=alpha, power=power)
+    return sample_size
 
 
 

@@ -38,7 +38,7 @@ FROM (
     GROUP BY user_agent, ip, x_forwarded_for
     HAVING COUNT(*) < 200
   ) y
-  ON (x.ip = y.ip AND x.user_agent = y.user_agent, x.x_forwarded_for = y.x_forwarded_for)
+  ON (x.ip = y.ip AND x.user_agent = y.user_agent AND x.x_forwarded_for = y.x_forwarded_for)
   WHERE uri_host = 'en.wikipedia.org'
     AND uri_path LIKE '/wiki/%%'
     -- Filter by right hour   

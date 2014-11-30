@@ -458,6 +458,8 @@ class Test(object):
 
 
 ########### STATS FUNCTIONS #########
+    def samples_per_branch_calculator(self, rate, mde=0.05, alpha=0.05, power=0.95):
+        return samples_per_branch_calculator(rate, mde=mde, alpha=alpha, power=power)
 
 
     def amount_stats(self, a, b, conf=95, rate='donations/impressions', remove_outliers=True):
