@@ -2,6 +2,10 @@
 import MySQLdb
 import pandas as pd
 import os
+from datetime import datetime
+import dateutil.parser
+import dateutil.relativedelta
+
 def get_lutetium_conn():
     conn = MySQLdb.connect(host="127.0.0.1", port=8000, read_default_file="~/.lutetium.cnf")
     return conn
@@ -27,7 +31,6 @@ def query_lutetium(query, params):
     return mysql_to_pandas(rows)
 
 
-#this is soo hacky. I need localforwarding to lutetium
 def query_lutetium_ssh(query, file_name):
     cmd = """ssh lutetium "mysql  --defaults-file=~/.my.cnf -e \\" """ +query+ """ \\" --socket  /tmp/mysql.sock"> """+ file_name
     os.system(cmd)
@@ -49,3 +52,39 @@ def query_stat_ssh(query, file_name):
         d = pd.read_csv(file_name,  sep='\t')
         os.system('rm ' + file_name)
         return d
+
+
+def get_time_limits(start = None, stop = None, month_delta = 3):
+    TSFORMAT = '%Y%m%d%H%M%S'
+    DATEFORMAT = '%Y-%m-%d %H:%M:%S'
+    params  = {}
+
+    if start:
+        params['start_dt'] = dateutil.parser.parse(start)
+    else:
+        # default to 3 month ago
+        params['start_dt'] = (datetime.utcnow() - dateutil.relativedelta.relativedelta(months=month_delta))
+
+    if stop:
+        params['stop_dt'] = dateutil.parser.parse(stop)
+    else:
+        # default to now
+        params['stop_dt'] = datetime.utcnow()
+
+    # Timestamp format for queries
+    params['start'] = str(params['start_dt'])
+    params['stop'] = str(params['stop_dt'])
+    params['start_ts'] = params['start_dt'].strftime(TSFORMAT)
+    params['stop_ts'] = params['stop_dt'].strftime(TSFORMAT)
+    params['start_year'] = params['start_dt'].year
+    params['start_month'] = params['start_dt'].month
+    params['start_day'] = params['start_dt'].day
+    params['start_hour'] = params['start_dt'].hour
+
+
+    params['stop_year'] = params['stop_dt'].year
+    params['stop_month'] = params['stop_dt'].month
+    params['stop_day'] = params['stop_dt'].day
+    params['stop_hour'] = params['stop_dt'].hour
+
+    return params

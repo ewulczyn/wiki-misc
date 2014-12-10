@@ -1,17 +1,9 @@
-from data_retrieval import OldBannerDataRetriever
-from query_remote_from_local_utils import *
+from db_utils import query_lutetium, query_hive_ssh, get_time_limits
+from plot_utils import plot_df
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
-# Over a given time interval
-
-# Look at impressions seen by reader
-
-# Look at impressions donors
-
-# donation rate as a function of imprssions seen
-
-# survival function
 
 def get_impressions_by_banner_count(start, stop):
 
@@ -21,16 +13,12 @@ def get_impressions_by_banner_count(start, stop):
     """
 
     data_dict = {}
-    params = OldBannerDataRetriever(None,  start, stop).params
+    params = get_time_limits(start, stop)
     query = """
     SELECT impressions_seen, CONCAT_WS(' ', banner, campaign, day) as name, n
     FROM ellery.banner_count
     WHERE day BETWEEN '%(start)s' AND '%(stop)s';
     """
-
-
-
-    query += ";"
     query = query % {'start':start, 'stop':stop}
     d = query_hive_ssh(query, 'impressions_by_count.tsv') 
 
@@ -62,13 +50,14 @@ def get_donations_by_banner_count(start, stop):
     AND utm_key is not NULL
     group by ct.utm_key, CONCAT_WS(' ', banner, utm_campaign, substr(DATE_FORMAT(CAST(ts as datetime), '%%Y-%%m-%%d'), 1, 10));
     """
-    params = OldBannerDataRetriever(None,  start, stop).params
+    params = get_time_limits(start, stop)
     d = query_lutetium(query, params)
     d['impressions_seen'] = d['impressions_seen'].fillna(-1)
     d['impressions_seen'] = d['impressions_seen'].astype(int)
-    
     d.index = d.impressions_seen 
     d.drop('impressions_seen', axis=1, inplace=True)
+    d['amount'] = d['amount'].fillna(0.0)
+    d['amount'] = d['amount'].astype(float)
     
     return d.sort()
 
@@ -77,13 +66,22 @@ def get_donations_by_banner_count(start, stop):
 
 
 
-def plot_by_impressions_seen(d, regs, normalize = True, max_impressions = 5, amount = False):
-    
-
+def plot_by_impressions_seen(d,
+                            regs,
+                            normalize = True,
+                            max_impressions = 5,
+                            amount = False,
+                            interactive = False, 
+                            ylabel = ''
+                             ):
     
     d_plot = pd.DataFrame()
     for name, reg in sorted(regs.items()):
-        counts = d[d.name.str.contains(reg)]['n']
+        if amount:
+            counts = d[d.name.str.contains(reg)]['amount']
+        else:
+            counts = d[d.name.str.contains(reg)]['n']
+
         counts = counts.groupby(counts.index).sum()
         if normalize:
             counts = counts / counts.sum()
@@ -92,19 +90,27 @@ def plot_by_impressions_seen(d, regs, normalize = True, max_impressions = 5, amo
         counts1.loc[max_impressions+1] = counts[max_impressions:].sum()
         d_plot[name] = counts1
 
-    return plot_df(d_plot)
+    return plot_df(d_plot, xlabel = 'impressions seen', ylabel=ylabel, interactive = interactive)
 
 
-def plot_donation_rate(don, imp, regs, cum = False,max_impressions=5 ):
-    
-
+def plot_donation_rate(don,
+                        imp,
+                        regs,
+                        cum = False,
+                        max_impressions=5,
+                        amount = False, 
+                        interactive = False,
+                        ylabel = '',
+):
     
 
     d_plot = pd.DataFrame()
     for name, reg in sorted(regs.items()):
 
-
-        donations = don.ix[don.name.str.contains(reg)]['n']
+        if amount:
+            donations = don.ix[don.name.str.contains(reg)]['amount']
+        else:
+            donations = don.ix[don.name.str.contains(reg)]['n']
         donations = donations.groupby(donations.index).sum()
         donations1 = donations.loc[:max_impressions]
         donations1.loc[max_impressions+1] = donations[max_impressions:].sum()
@@ -119,22 +125,11 @@ def plot_donation_rate(don, imp, regs, cum = False,max_impressions=5 ):
             impressions1 = impressions1.cumsum()
             donations1 = donations1.cumsum()
 
-
-
-
         d_plot[name] = donations1 / impressions1
 
-    return plot_df(d_plot)
+    return plot_df(d_plot, xlabel = 'impressions seen', ylabel=ylabel, interactive=interactive)
 
 
-
-
-def plot_df(d):
-    fig = plt.figure(figsize=(10, 4), dpi=80)
-    for c in d.columns:
-        plt.plot(d.index, d[c], label = c)
-    plt.legend()
-    return fig
 
 
 

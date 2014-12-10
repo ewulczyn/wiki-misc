@@ -7,11 +7,8 @@ import time
 import re
 from collections import defaultdict
 import sys, traceback
-from datetime import datetime
-import dateutil.parser
-import dateutil.relativedelta
 from abc import ABCMeta, abstractmethod
-from query_remote_from_local_utils import *
+from db_utils import *
 
 
 
@@ -44,8 +41,6 @@ def get_banner_parrallel(retrieverclass, banner_names, start, stop, num_wokers =
 class BannerDataRetriever(object):
     __metaclass__ = ABCMeta
     def __init__(self, banner, start, stop):
-        self.TSFORMAT = '%Y%m%d%H%M%S'
-        self.DATEFORMAT = '%Y-%m-%d %H:%M:%S'
         self.banner = banner
         self.params = self.get_param_dict(banner, start, stop)
 
@@ -113,36 +108,8 @@ class BannerDataRetriever(object):
 
 
     def get_param_dict(self, banner, start, stop):
-        params  = {'banner': banner,}
-
-        if start:
-            params['start_dt'] = dateutil.parser.parse(start)
-        else:
-            # default to 3 month ago
-            params['start_dt'] = (datetime.utcnow() + dateutil.relativedelta.relativedelta(months=-3))
-
-        if stop:
-            params['stop_dt'] = dateutil.parser.parse(stop)
-        else:
-            # default to now
-            params['stop_dt'] = datetime.utcnow()
-
-        # Timestamp format for queries
-        params['start'] = str(params['start_dt'])
-        params['stop'] = str(params['stop_dt'])
-        params['start_ts'] = params['start_dt'].strftime(self.TSFORMAT)
-        params['stop_ts'] = params['stop_dt'].strftime(self.TSFORMAT)
-        params['start_year'] = params['start_dt'].year
-        params['start_month'] = params['start_dt'].month
-        params['start_day'] = params['start_dt'].day
-        params['start_hour'] = params['start_dt'].hour
-
-
-        params['stop_year'] = params['stop_dt'].year
-        params['stop_month'] = params['stop_dt'].month
-        params['stop_day'] = params['stop_dt'].day
-        params['stop_hour'] = params['stop_dt'].hour
-
+        params = get_time_limits(start, stop)
+        params['banner'] = banner
         return params
 
 

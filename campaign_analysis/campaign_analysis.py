@@ -1,12 +1,8 @@
-from data_retrieval import OldBannerDataRetriever
-from query_remote_from_local_utils import *
+from db_utils import query_lutetium, get_time_limits
 from datetime import timedelta
-import matplotlib.pyplot as plt
-import prettyplotlib as ppl
-import plotly.plotly as py
-import plotly.tools as tls
-from plotly.graph_objs import *
-py.sign_in("ewulczyn", "y2a7n75kl8")
+from plot_utils import plot_df
+import pandas as pd
+
 
 
 def get_donations(start, stop):
@@ -29,7 +25,7 @@ def get_donations(start, stop):
     AND utm_key is not NULL
     group by DATE_FORMAT(CAST(ts as datetime), '%%Y-%%m-%%d %%H'),  CONCAT_WS(' ', banner, utm_campaign);
     """
-    params = OldBannerDataRetriever(None,  start, stop).params
+    params = get_time_limits(start, stop)
     d = query_lutetium(query, params)
     d.index = d['timestamp'].map(lambda t: pd.to_datetime(str(t)))
     del d['timestamp']
@@ -57,7 +53,7 @@ def get_impressions(start, stop):
     """
 
 
-    params = OldBannerDataRetriever(None,  start, stop).params
+    params = get_time_limits(start, stop)
     d = query_lutetium(query, params)
     d.index = d['dt'].map(lambda t: pd.to_datetime(str(t)))
     del d['dt']
@@ -114,25 +110,3 @@ def plot_rate_by_time(don, imp, regs,  hours = 1, start = '2000', stop = '2050',
     return plot_df(d_plot, ylabel, interactive)
 
 
-
-
-
-
-
-
-
-def plot_df(d, ylabel = '', interactive = False):
-    fig = plt.figure(figsize=(10, 4), dpi=80)
-    for c in d.columns:
-        plt.plot(d.index, d[c], label = c)
-    plt.ylabel(ylabel)
-
-    if interactive:
-        plt.legend()
-        return py.iplot_mpl(fig)
-
-    else:
-        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-
-
-    
