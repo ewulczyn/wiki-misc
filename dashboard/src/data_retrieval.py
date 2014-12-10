@@ -58,7 +58,7 @@ class BannerDataRetriever(object):
         query = """
         SELECT
         ct.ts as timestamp, 
-        ct.utm_key as impressions_seen, 
+        CAST(ct.utm_key as int) as impressions_seen, 
         cs.payment_method
         FROM drupal.contribution_tracking ct JOIN drupal.contribution_source cs
         ON  ct.id = cs.contribution_tracking_id
@@ -66,6 +66,7 @@ class BannerDataRetriever(object):
         AND ct.ts BETWEEN %(start_ts)s AND %(stop_ts)s
         ORDER BY ct.ts; 
         """
+
 
         d = query_lutetium(query, self.params)
         d.index  = d['timestamp'].map(lambda t: pd.to_datetime(str(t)))
@@ -81,7 +82,7 @@ class BannerDataRetriever(object):
         SELECT
         co.total_amount as amount, 
         ct.ts as timestamp, 
-        ct.utm_key as impressions_seen, 
+        CAST(ct.utm_key as int) as impressions_seen, 
         cs.payment_method
         FROM civicrm.civicrm_contribution co, drupal.contribution_tracking ct, drupal.contribution_source cs
         WHERE  ct.id = cs.contribution_tracking_id
@@ -90,6 +91,7 @@ class BannerDataRetriever(object):
         AND banner = %(banner)s
         order by ct.ts;
         """
+
 
         d = query_lutetium(query, self.params)
         d.index = d['timestamp'].map(lambda t: pd.to_datetime(str(t)))
@@ -103,9 +105,9 @@ class BannerDataRetriever(object):
 
     def get_all(self):
         d = {}
-        d['impressions'] = self.get_impressions()
         d['clicks'] = self.get_clicks()
-        d['donations'] = self.get_donations() 
+        d['donations'] = self.get_donations()
+        d['impressions'] = self.get_impressions()
 
         return d
 
@@ -123,7 +125,7 @@ class BannerDataRetriever(object):
             params['stop_dt'] = dateutil.parser.parse(stop)
         else:
             # default to now
-            params['stop_dt'] = datetime.now()
+            params['stop_dt'] = datetime.utcnow()
 
         # Timestamp format for queries
         params['start'] = str(params['start_dt'])
@@ -133,10 +135,13 @@ class BannerDataRetriever(object):
         params['start_year'] = params['start_dt'].year
         params['start_month'] = params['start_dt'].month
         params['start_day'] = params['start_dt'].day
+        params['start_hour'] = params['start_dt'].hour
+
 
         params['stop_year'] = params['stop_dt'].year
         params['stop_month'] = params['stop_dt'].month
         params['stop_day'] = params['stop_dt'].day
+        params['stop_hour'] = params['stop_dt'].hour
 
         return params
 
@@ -169,8 +174,7 @@ class HiveBannerDataRetriever(BannerDataRetriever):
 
 
         query += "GROUP BY minute, result, reason, spider;"
-        query = query % self.params
-        print query
+        query = query % params
 
         d = query_hive_ssh(query, 'hive_impressions_'+self.banner+".tsv")
         d.index = pd.to_datetime(d['timestamp'])

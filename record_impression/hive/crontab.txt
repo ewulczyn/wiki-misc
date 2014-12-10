@@ -1,3 +1,0 @@
-MAILTO=ewulczyn@wikimedia.org
-30 * * * * python  /home/ellery/wmf/record_impressions/hive/crunch_curr.py
-

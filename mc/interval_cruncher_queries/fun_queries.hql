@@ -24,3 +24,9 @@ SELECT * from ellery.mc_agg
 WHERE prev = 'Germany'
 ORDER BY n DESC
 LIMIT 100;
+
+
+SELECT * from ellery.mc_agg
+WHERE prev = 'Ebola_virus_disease'
+ORDER BY n DESC
+LIMIT 100;

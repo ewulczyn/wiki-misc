@@ -39,20 +39,19 @@ WHERE ua(user_agent)['device_family'] != 'Spider';
 
 
 SELECT *
-   
-  FROM ellery.pageviews_no_spiders x
-  JOIN (
-    SELECT user_agent, ip
-    FROM ellery.pageviews_no_spiders
-    WHERE year = 2014
-      AND month = 11
-      AND day = 21
-      AND hour = 10
-    GROUP BY user_agent, ip
-    HAVING COUNT(*) < 200
-  ) y
-  ON (x.ip = y.ip AND x.user_agent = y.user_agent)
-  WHERE year = 2014
-      AND month = 11
-      AND day = 21
-      AND hour = 10;
+FROM ellery.pageviews_no_spiders x
+JOIN (
+  SELECT user_agent, ip, x_forwarded_for
+  FROM ellery.pageviews_no_spiders
+  WHERE year = %(year)d
+    AND month = %(month)d
+    AND day = %(day)d
+    AND hour = %(hour)d
+  GROUP BY user_agent, ip, x_forwarded_for
+  HAVING COUNT(*) < 200
+) y
+ON (x.ip = y.ip AND x.user_agent = y.user_agent)
+WHERE year = %(year)d
+    AND month = %(month)d
+    AND day = %(day)d
+    AND hour = %(hour)d;

@@ -164,7 +164,7 @@ def expected_results_by_lift(TestClass, params, iters, p_hat, lifts, fig_name=No
 
 
 
-def expected_results_by_interval(TestClass, params, iters, p_hat, lifts, fig_name=None):
+def expected_results_by_interval(TestClass, params, iters, p_hat, lifts, n1, n2, n3, fig_name=None):
 
     """
     This function generates plots that show the expected results
@@ -187,6 +187,7 @@ def expected_results_by_interval(TestClass, params, iters, p_hat, lifts, fig_nam
         new_params = list(params)
         new_params[0] = SimStream(p_B.lift(lift)) #a_stream
         new_params[1] = SimStream(p_B) #b_stream
+        new_params[2] = n1
         p_better, p_unknown, time = expected_results(TestClass, new_params, iters)
         run_times_list['mean'].append(time)
         p_A_betters['mean'].append(p_better)
@@ -196,7 +197,7 @@ def expected_results_by_interval(TestClass, params, iters, p_hat, lifts, fig_nam
         new_params = list(params)
         new_params[0] = SimStream(p_B.lift(lift)) #a_stream
         new_params[1] = SimStream(p_B) #b_stream
-        new_params[2] = 10
+        new_params[2] = n2
         p_better, p_unknown, time = expected_results(TestClass, new_params, iters)
         p_A_betters['lower'].append(p_better)
         run_times_list['lower'].append(time)
@@ -206,7 +207,7 @@ def expected_results_by_interval(TestClass, params, iters, p_hat, lifts, fig_nam
         new_params = list(params)
         new_params[0] = SimStream(p_B.lift(lift)) #a_stream
         new_params[1] = SimStream(p_B) #b_stream
-        new_params[2] = params[3] + 1
+        new_params[2] = n3
         p_better, p_unknown, time = expected_results(TestClass, new_params, iters)
         p_A_betters['upper'].append(p_better)
         run_times_list['upper'].append(time)
@@ -225,18 +226,18 @@ def expected_results_by_interval(TestClass, params, iters, p_hat, lifts, fig_nam
 
 
     ax1.set_ylim([-0.1, 1.1])
-    ax1.plot(lifts, p_A_betters['mean'], label='P(A wins) n = %d' % params[2])
-    ax1.plot(lifts, p_A_betters['lower'], label='P(A wins) n = 10', alpha=0.31)
-    ax1.plot(lifts, p_A_betters['upper'], label='P(A wins) n = %d' % params[3], alpha=0.31)
+    ax1.plot(lifts, p_A_betters['lower'], label='P(A wins) n = %d' % n1)
+    ax1.plot(lifts, p_A_betters['mean'], label='P(A wins) n = %d' % n2)
+    ax1.plot(lifts, p_A_betters['upper'], label='P(A wins) n = %d' % n3)
 
     ax1.set_xlabel('percent lift')
     ax1.set_ylabel('probability of choosing A')
     ax1.legend(loc=4)
 
     ax2.set_xlim([lifts[0], lifts[-1]])
-    ax2.plot(lifts, avg_run_times_mean, label='n = %d'% params[2])
-    ax2.plot(lifts, avg_run_times_upper, label='n = %d' % params[3])
-    ax2.plot(lifts, avg_run_times_lower, label='n = 1')
+    ax2.plot(lifts, avg_run_times_lower, label='n = %d'% n1)
+    ax2.plot(lifts, avg_run_times_mean, label='n = %d'% n2)
+    ax2.plot(lifts, avg_run_times_upper, label='n = %d' % n3)
 
     ax2.set_xlabel('percent lift')
     ax2.set_ylabel('impressions per banner')

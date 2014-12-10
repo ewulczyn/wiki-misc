@@ -1,0 +1,6 @@
+MAILTO=ewulczyn@wikimedia.org
+30 * * * * python  /home/ellery/wmf/util/interval_cruncher/interval_cruncher.py --hour_lag 2 --base_dir /home/ellery/wmf/record_impression/ --unit hour 
+5 3 * * * python  /home/ellery/wmf/util/interval_cruncher/interval_cruncher.py --hour_lag 4 --base_dir /home/ellery/wmf/impressions_seen/ --unit day
+
+
+
