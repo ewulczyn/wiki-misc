@@ -1,3 +1,6 @@
+
+--this will be much easier once page_id is in x_analytics
+
 CREATE TEMPORARY FUNCTION ua as 'org.wikimedia.analytics.refinery.hive.UAParserUDF';
 
 DROP TABLE IF EXISTS ellery.mc_%(year)d_%(month)d_%(day)d_%(hour)d;

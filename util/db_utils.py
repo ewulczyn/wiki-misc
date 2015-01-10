@@ -6,9 +6,15 @@ from datetime import datetime
 import dateutil.parser
 import dateutil.relativedelta
 
-def get_lutetium_conn():
-    conn = MySQLdb.connect(host="127.0.0.1", port=8000, read_default_file="~/.lutetium.cnf")
-    return conn
+
+def query_through_tunnel(port,cnf_path, query, params):
+    conn = MySQLdb.connect(host="127.0.0.1", port=port, read_default_file=cnf_path)
+    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    return mysql_to_pandas(rows)
+
 
 def mysql_to_pandas(dicts):
     dmaster = {}
@@ -22,13 +28,18 @@ def mysql_to_pandas(dicts):
 
 
 def query_lutetium(query, params):
-    conn = get_lutetium_conn()
-    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    conn.close()
+    #ssh lutetium
+    return query_through_tunnel(8000, "~/.lutetium.cnf", query, params)
 
-    return mysql_to_pandas(rows)
+def query_analytics_store(query, params):
+    # ssh bast1001.wikimedia.org
+    return query_through_tunnel(8001, "~/.stat3.cnf", query, params)
+
+def query_s1(query, params):
+    # ssh bast1001.wikimedia.org
+    return query_through_tunnel(8002, "~/.stat3.cnf", query, params)
+
+
 
 
 def query_lutetium_ssh(query, file_name):
@@ -55,6 +66,9 @@ def query_stat_ssh(query, file_name):
 
 
 def get_time_limits(start = None, stop = None, month_delta = 3):
+    """
+    Expands start and stop dts into detailed dt parameter dict
+    """
     TSFORMAT = '%Y%m%d%H%M%S'
     DATEFORMAT = '%Y-%m-%d %H:%M:%S'
     params  = {}

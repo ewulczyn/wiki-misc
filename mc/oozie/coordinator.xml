@@ -1,45 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coordinator-app end="${stop_time}" frequency="${coord:hours(1)}" name="hive_banner_impressions" start="${start_time}" timezone="Universal" xmlns="uri:oozie:coordinator:0.4">
+<coordinator-app end="${stop_time}" frequency="${coord:days(1)}" name="${task}_coordinator" start="${start_time}" timezone="Universal" xmlns="uri:oozie:coordinator:0.4">
     <controls>
-        <timeout>600</timeout>
+        <timeout>5760</timeout>
         <concurrency>1</concurrency>
         <execution>LIFO</execution>
         <throttle>2</throttle>
     </controls>
     <datasets>
-        <dataset frequency="${coord:hours(1)}" initial-instance="${start_time}" name="webrequest_mobile" timezone="Universal">
-            <uri-template>${webrequest_data_directory}/webrequest_mobile/hourly/${YEAR}/${MONTH}/${DAY}/${HOUR}</uri-template>
-            <done-flag></done-flag>
-        </dataset>
         <dataset frequency="${coord:hours(1)}" initial-instance="${start_time}" name="webrequest_text" timezone="Universal">
             <uri-template>${webrequest_data_directory}/webrequest_text/hourly/${YEAR}/${MONTH}/${DAY}/${HOUR}</uri-template>
             <done-flag></done-flag>
         </dataset>
-        <dataset frequency="${coord:hours(1)}" initial-instance="${start_time}" name="record_state" timezone="Universal">
+        <dataset frequency="${coord:days(1)}" initial-instance="${start_time}" name="record_state" timezone="Universal">
             <uri-template>${state_directory}</uri-template>
-            <done-flag>${YEAR}-${MONTH}-${DAY}T${HOUR}</done-flag>
+            <done-flag>${YEAR}-${MONTH}-${DAY}</done-flag>
         </dataset>
     </datasets>
-    <!--We need data from input data set 0
-    but since we don't know when the partition will be added, we wait an extra 3 hours.
-    This is probably not the best way to delay execution  -->
     <input-events>
-        <data-in dataset="webrequest_mobile" name="input_webrequest_mobile">
-            <instance>${coord:current(-3)}</instance>
-        </data-in>
         <data-in dataset="webrequest_text" name="input_webrequest_text">
-            <instance>${coord:current(-3)}</instance>
+            <start-instance>${coord:current(-48)}</start-instance>
+            <end-instance>${coord:current(-25)}</end-instance>
         </data-in>
     </input-events>
     <output-events>
         <data-out dataset="record_state" name="output_record_state">
-            <instance>${coord:current(-3)}</instance>
+            <instance>${coord:current(0)}</instance>
         </data-out>
     </output-events>
     <action>
         <workflow>
             <app-path>${workflow_file}</app-path>
             <configuration>
+                <property>
+                    <name>task</name>
+                    <value>${task}</value>
+                </property>
                 <property>
                     <name>name_node</name>
                     <value>${name_node}</value>
@@ -62,19 +57,15 @@
                 </property>
                 <property>
                     <name>year</name>
-                    <value>${coord:formatTime(coord:dateOffset(coord:nominalTime(), -3, 'HOUR'), &quot;y&quot;)}</value>
+                    <value>${coord:formatTime(coord:dateOffset(coord:nominalTime(), -2, 'DAY'), &quot;y&quot;)}</value>
                 </property>
                 <property>
                     <name>month</name>
-                    <value>${coord:formatTime(coord:dateOffset(coord:nominalTime(), -3, 'HOUR'), &quot;M&quot;)}</value>
+                    <value>${coord:formatTime(coord:dateOffset(coord:nominalTime(), -2, 'DAY'), &quot;M&quot;)}</value>
                 </property>
                 <property>
                     <name>day</name>
-                    <value>${coord:formatTime(coord:dateOffset(coord:nominalTime(), -3, 'HOUR'), &quot;d&quot;)}</value>
-                </property>
-                <property>
-                    <name>hour</name>
-                    <value>${coord:formatTime(coord:dateOffset(coord:nominalTime(), -3, 'HOUR'), &quot;H&quot;)}</value>
+                    <value>${coord:formatTime(coord:dateOffset(coord:nominalTime(), -2, 'DAY'), &quot;d&quot;)}</value>
                 </property>
             </configuration>
         </workflow>

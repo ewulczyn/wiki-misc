@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<workflow-app name="record_impression ${year},${month},${day},${hour}" xmlns="uri:oozie:workflow:0.4">
+<workflow-app name="mc_workflow ${year}-${month}-${day}" xmlns="uri:oozie:workflow:0.4">
     <parameters>
         <property>
             <name>queue_name</name>
@@ -32,15 +32,9 @@
             <name>day</name>
             <description>The partition's day</description>
         </property>
-        <property>
-            <name>hour</name>
-            <description>The partition's hour</description>
-        </property>
     </parameters>
-
-    <start to="count_impressions"/>
-
-    <action name="count_impressions">
+    <start to="action"/>
+    <action name="action">
         <hive xmlns="uri:oozie:hive-action:0.3">
             <job-tracker>${job_tracker}</job-tracker>
             <name-node>${name_node}</name-node>
@@ -59,18 +53,13 @@
             <param>year=${year}</param>
             <param>month=${month}</param>
             <param>day=${day}</param>
-            <param>hour=${hour}</param>
             <param>database=${user}</param>
         </hive>
         <ok to="end"/>
         <error to="kill"/>
     </action>
-
     <kill name="kill">
         <message>Action failed, error message[${wf:errorMessage(wf:lastErrorNode())}]</message>
     </kill>
     <end name="end"/>
-
-
-
 </workflow-app>

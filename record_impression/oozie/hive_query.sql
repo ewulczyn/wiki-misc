@@ -1,11 +1,8 @@
-set hive.exec.scratchdir=/tmp/hive-ellery;
+set hive.stats.autogather=false;
+USE ${database};
 
-add jar hdfs://analytics-hadoop/wmf/refinery/current/artifacts/refinery-hive.jar;
-
---file:///usr/lib/hive-hcatalog/share/hcatalog/hive-hcatalog-core-0.12.0-cdh5.0.2.jar
---set hive.aux.jars.path=hdfs://analytics-hadoop/wmf/refinery/current/artifacts/refinery-hive.jar;
-
-CREATE TEMPORARY FUNCTION ua as 'org.wikimedia.analytics.refinery.hive.UAParserUDF';
+ADD JAR hdfs:///wmf/refinery/current/artifacts/refinery-hive.jar;
+CREATE TEMPORARY FUNCTION parse_ua as 'org.wikimedia.analytics.refinery.hive.UAParserUDF';
 
 
 DROP TABLE IF EXISTS ellery.oozie_impressions_${year}_${month}_${day}_${hour};
@@ -60,14 +57,14 @@ FROM (
       PARSE_URL(CONCAT('http://bla.org/woo/', uri_query), 'QUERY', 'db') as db,
       PARSE_URL(CONCAT('http://bla.org/woo/', uri_query), 'QUERY', 'bucket') as bucket,
       CASE 
-       WHEN ua(user_agent)['device_family']= 'Spider' THEN 1
-       WHEN ua(user_agent)['device_family'] != 'Other' THEN 0
-       WHEN LOWER(user_agent) RLIKE 'bot|fetch|spider|slurp|crawler|sleuth' THEN 1
-       WHEN LOWER(user_agent) RLIKE 'jakarta commons|tencenttraveler|genieo/|squider|gomezagent|quicklook|ning/|metauri api|daum|butterfly|guzzle|wada.vn|catchpoint' THEN 1
-       WHEN LOWER(user_agent) RLIKE 'facebookexternalhit|pinterest|vkshare|flipboardproxy|twilioproxy' THEN 1
-       WHEN LOWER(user_agent) RLIKE 'developers.google.com/+/web/snippet/|google web preview|bingpreview|sendgrid|secret_pin_test_agent|jumio callback clienti|paypal' THEN 1
-       WHEN LOWER(user_agent) RLIKE 'libcurl|urllib|pycurl/|cpython|akamai_site_analyzer|monitis|check_http/v|chkd 1.2|node-xmlhttprequest|winhttp|sitecon' THEN 1
-       ELSE 0
+        WHEN parse_ua(user_agent)['device_family'] = 'Spider' THEN 1
+        WHEN parse_ua(user_agent)['device_family'] != 'Other' THEN 0
+        WHEN LOWER(user_agent) RLIKE 'bot|fetch|spider|slurp|crawler|sleuth' THEN 1
+        WHEN LOWER(user_agent) RLIKE 'jakarta commons|tencenttraveler|genieo/|squider|gomezagent|quicklook|ning/|metauri api|daum|butterfly|guzzle|wada.vn|catchpoint' THEN 1
+        WHEN LOWER(user_agent) RLIKE 'facebookexternalhit|pinterest|vkshare|flipboardproxy|twilioproxy' THEN 1
+        WHEN LOWER(user_agent) RLIKE 'developers.google.com/+/web/snippet/|google web preview|bingpreview|sendgrid|secret_pin_test_agent|jumio callback clienti|paypal' THEN 1
+        WHEN LOWER(user_agent) RLIKE 'libcurl|urllib|pycurl/|cpython|akamai_site_analyzer|monitis|check_http/v|chkd 1.2|node-xmlhttprequest|winhttp|sitecon' THEN 1
+        ELSE 0
       END as spider
 
     FROM wmf_raw.webrequest 

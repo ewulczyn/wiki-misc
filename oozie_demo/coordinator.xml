@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coordinator-app end="${stop_time}" frequency="${coord:hours(1)}" name="demo coordinator" start="${start_time}" timezone="Universal" xmlns="uri:oozie:coordinator:0.4">
+    <controls>
+        <timeout>600</timeout>
+        <concurrency>1</concurrency>
+        <execution>LIFO</execution>
+    </controls>
+    <action>
+        <workflow>
+            <app-path>${workflow_file}</app-path>
+        </workflow>
+    </action>
+</coordinator-app>

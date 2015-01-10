@@ -5,14 +5,12 @@ import pandas as pd
 
 
 
-def get_donations(start, stop, country = '.*'):
+def get_donations(start, stop):
 
     """
     Gets all donation data within the time range start:stop
     Groups data by banner, campaign and number of impressions seen
     """
-    params = get_time_limits(start, stop)
-    params['country'] = country
 
 
     query = """
@@ -25,9 +23,9 @@ def get_donations(start, stop, country = '.*'):
     AND co.id = ct.contribution_id
     AND ts BETWEEN %(start_ts)s AND %(stop_ts)s
     AND utm_key is not NULL
-    AND ct.country LIKE %(country)s
     group by DATE_FORMAT(CAST(ts as datetime), '%%Y-%%m-%%d %%H'),  CONCAT_WS(' ', banner, utm_campaign);
     """
+    params = get_time_limits(start, stop)
     d = query_lutetium(query, params)
     d.index = d['timestamp'].map(lambda t: pd.to_datetime(str(t)))
     del d['timestamp']
@@ -38,44 +36,40 @@ def get_donations(start, stop, country = '.*'):
 
 
 
-def get_impressions(start, stop, country_id = None):
+def get_impressions(start, stop):
 
     """
     Gets all donation data within the time range start:stop
     Groups data by banner, campaign and number of impressions seen
     """
-    params = get_time_limits(start, stop)
-    params['country_id'] = country_id
 
 
     query = """
     SELECT
     DATE_FORMAT(CAST(timestamp as datetime), '%%Y-%%m-%%d %%H') as dt,  CONCAT_WS(' ', banner, campaign) as name, SUM(count) as n  
     FROM pgehres.bannerimpressions 
-    WHERE  timestamp BETWEEN %(start)s AND %(stop)s
+    WHERE  timestamp BETWEEN %(start)s AND %(stop)s 
+    group by DATE_FORMAT(CAST(timestamp as datetime), '%%Y-%%m-%%d %%H'),  CONCAT_WS(' ', banner, campaign);
     """
-    if country_id:
-        query += " AND country_id = %(country_id)s"
 
-    query += " GROUP BY DATE_FORMAT(CAST(timestamp as datetime), '%%Y-%%m-%%d %%H'),  CONCAT_WS(' ', banner, campaign)"
-    
+
+    params = get_time_limits(start, stop)
     d = query_lutetium(query, params)
     d.index = d['dt'].map(lambda t: pd.to_datetime(str(t)))
     del d['dt']
+
     d['n'] = d['n'].astype(int)
     
     
     return d.sort()
 
 
-def plot_by_time(d, regs, start = '2000', stop = '2050', hours = 1, amount = False, cum = False, normalize = False, ylabel = '', interactive = False, index = None):
+def plot_by_time(d, regs, start = '2000', stop = '2050', hours = 1, amount = False, cum = False, normalize = False, ylabel = '', interactive = False):
     
+
     d = d[start:stop]
 
-    if index is None:
-        d.index = pd.Series(d.index).apply(lambda tm: tm - timedelta(hours=(24 * tm.day + tm.hour) % hours))
-    else:
-        d.index = d[index]
+    d.index = pd.Series(d.index).apply(lambda tm: tm - timedelta(hours=(24 * tm.day + tm.hour) % hours))
 
     d_plot = pd.DataFrame()
     for name, reg in regs.items():
@@ -92,22 +86,17 @@ def plot_by_time(d, regs, start = '2000', stop = '2050', hours = 1, amount = Fal
         else:
             d_plot[name] = counts.groupby(counts.index).sum()
 
-    d_plot = d_plot.fillna(0)
+
     #d_plot.plot(figsize=(10, 4))
-    return plot_df(d_plot, ylabel, interactive = interactive)
+    return plot_df(d_plot, ylabel, interactive)
 
-def plot_rate_by_time(don, imp, regs,  hours = 1, start = '2000', stop = '2050', ylabel = 'donation rate', interactive = False, index = None):
+def plot_rate_by_time(don, imp, regs,  hours = 1, start = '2000', stop = '2050', ylabel = 'donation rate', interactive = False):
     
-
     don = don[start:stop]
     imp = imp[start:stop]
+    don.index = pd.Series(don.index).apply(lambda tm: tm - timedelta(hours=(24 * tm.day + tm.hour) % hours))
+    imp.index = pd.Series(imp.index).apply(lambda tm: tm - timedelta(hours=(24 * tm.day + tm.hour) % hours))
 
-    if index is None:
-        don.index = pd.Series(don.index).apply(lambda tm: tm - timedelta(hours=(24 * tm.day + tm.hour) % hours))
-        imp.index = pd.Series(imp.index).apply(lambda tm: tm - timedelta(hours=(24 * tm.day + tm.hour) % hours))
-    else:
-        don.index = don[index]
-        imp.index = imp[index]
 
     d_plot = pd.DataFrame()
     for name, reg in regs.items():
@@ -118,6 +107,6 @@ def plot_rate_by_time(don, imp, regs,  hours = 1, start = '2000', stop = '2050',
 
         d_plot[name] = dons/imps
     #d_plot.plot(figsize=(10, 4))
-    return plot_df(d_plot, ylabel, interactive = interactive)
+    return plot_df(d_plot, ylabel, interactive)
 
 

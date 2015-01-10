@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS ellery.oozie_impressions;
 CREATE TABLE IF NOT EXISTS ellery.oozie_impressions (
   anonymous STRING,
   banner STRING,

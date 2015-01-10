@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workflow-app xmlns="uri:oozie:workflow:0.4"
+    name="demo-ellery">
+    <start to="main"/>
+
+    <action name="main">
+        <hive xmlns="uri:oozie:hive-action:0.3">
+            <job-tracker>resourcemanager.analytics.eqiad.wmnet:8032</job-tracker>
+            <name-node>hdfs://analytics-hadoop</name-node>
+            <job-xml>hdfs://analytics-hadoop/wmf/refinery/current/oozie/util/hive/hive-site.xml</job-xml>
+            <configuration>
+                <property>
+                    <name>hive.exec.scratchdir</name>
+                    <value>/tmp/hive-${user}</value>
+                </property>
+            </configuration>
+
+            <script>${hive_script}</script>
+            <param>database=${user}</param>
+        </hive>
+        <ok to="end"/>
+        <error to="kill"/>
+    </action>
+
+    <kill name="kill">
+        <message>Action failed, error message[${wf:errorMessage(wf:lastErrorNode())}]</message>
+    </kill>
+    <end name="end"/>
+</workflow-app>
+
