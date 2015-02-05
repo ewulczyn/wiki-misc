@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<workflow-app name="mc_workflow ${year}-${month}-${day}" xmlns="uri:oozie:workflow:0.4">
+<workflow-app name="${task}_workflow_${version} ${year}-${month}-${day}" xmlns="uri:oozie:workflow:0.4">
     <parameters>
         <property>
             <name>queue_name</name>
             <value>default</value>
         </property>
         <!-- Required properties -->
+        <property>
+            <name>version</name>
+        </property>
         <property>
             <name>name_node</name>
         </property>
@@ -54,6 +57,7 @@
             <param>month=${month}</param>
             <param>day=${day}</param>
             <param>database=${user}</param>
+            <param>version=${version}</param>
         </hive>
         <ok to="end"/>
         <error to="kill"/>

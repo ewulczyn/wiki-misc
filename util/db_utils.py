@@ -5,6 +5,9 @@ import os
 from datetime import datetime
 import dateutil.parser
 import dateutil.relativedelta
+import traceback
+import sys
+
 
 
 def query_through_tunnel(port,cnf_path, query, params):
@@ -43,11 +46,18 @@ def query_s1(query, params):
 
 
 def query_lutetium_ssh(query, file_name):
-    cmd = """ssh lutetium "mysql  --defaults-file=~/.my.cnf -e \\" """ +query+ """ \\" --socket  /tmp/mysql.sock"> """+ file_name
-    os.system(cmd)
-    d = pd.read_csv(file_name,  sep='\t')
-    os.system('rm ' + file_name)
-    return d
+    try:
+        cmd = """ssh lutetium "mysql  --defaults-file=~/.my.cnf -e \\" """ +query+ """ \\" --socket  /tmp/mysql.sock"> """+ file_name
+        os.system(cmd)
+        d = pd.read_csv(file_name,  sep='\t')
+        os.system('rm ' + file_name)
+        return d
+    except:
+        print traceback.format_exc() 
+        os.system('rm ' + file_name)
+        print "QUERY FAILED"
+    
+
 
     
 def query_hive_ssh(query, file_name):

@@ -4,31 +4,68 @@ from plot_utils import plot_df
 import pandas as pd
 
 
-
-def get_donations(start, stop, country = '.*'):
+def get_clicks(start, stop, campaign = '.*'):
 
     """
     Gets all donation data within the time range start:stop
     Groups data by banner, campaign and number of impressions seen
     """
     params = get_time_limits(start, stop)
-    params['country'] = country
+    params['campaign'] = campaign
 
 
     query = """
     SELECT
     DATE_FORMAT(CAST(ts as datetime), '%%Y-%%m-%%d %%H') as timestamp,  CONCAT_WS(' ', banner, utm_campaign) as name,
     COUNT(*) as n,
-    SUM(co.total_amount) as amount
+    ct.country as country
+    FROM drupal.contribution_tracking ct, drupal.contribution_source cs
+    WHERE  ct.id = cs.contribution_tracking_id
+    AND ts BETWEEN %(start_ts)s AND %(stop_ts)s
+    AND utm_medium = 'sitenotice'
+    AND utm_campaign REGEXP %(campaign)s
+    GROUP BY DATE_FORMAT(CAST(ts as datetime), '%%Y-%%m-%%d %%H'),  CONCAT_WS(' ', banner, utm_campaign)
+    """
+    
+    print query % params
+    d = query_lutetium(query, params)
+    print d.head()
+    d.index = d['timestamp'].map(lambda t: pd.to_datetime(str(t)))
+    del d['timestamp']
+    
+    return d.sort()
+
+
+
+
+def get_donations(start, stop, campaign = '.*'):
+
+    """
+    Gets all donation data within the time range start:stop
+    Groups data by banner, campaign and number of impressions seen
+    """
+    params = get_time_limits(start, stop)
+    params['campaign'] = campaign
+
+
+    query = """
+    SELECT
+    DATE_FORMAT(CAST(ts as datetime), '%%Y-%%m-%%d %%H') as timestamp,  CONCAT_WS(' ', banner, utm_campaign) as name,
+    COUNT(*) as n,
+    SUM(co.total_amount) as amount,
+    ct.country as country
     FROM civicrm.civicrm_contribution co, drupal.contribution_tracking ct, drupal.contribution_source cs
     WHERE  ct.id = cs.contribution_tracking_id
     AND co.id = ct.contribution_id
     AND ts BETWEEN %(start_ts)s AND %(stop_ts)s
-    AND utm_key is not NULL
-    AND ct.country LIKE %(country)s
-    group by DATE_FORMAT(CAST(ts as datetime), '%%Y-%%m-%%d %%H'),  CONCAT_WS(' ', banner, utm_campaign);
+    AND utm_medium = 'sitenotice'
+    AND utm_campaign REGEXP %(campaign)s
+    GROUP BY DATE_FORMAT(CAST(ts as datetime), '%%Y-%%m-%%d %%H'),  CONCAT_WS(' ', banner, utm_campaign)
     """
+    
+    print query % params
     d = query_lutetium(query, params)
+    print d.head()
     d.index = d['timestamp'].map(lambda t: pd.to_datetime(str(t)))
     del d['timestamp']
     d['amount'] = d['amount'].fillna(0.0)
@@ -95,6 +132,8 @@ def plot_by_time(d, regs, start = '2000', stop = '2050', hours = 1, amount = Fal
     d_plot = d_plot.fillna(0)
     #d_plot.plot(figsize=(10, 4))
     return plot_df(d_plot, ylabel, interactive = interactive)
+
+
 
 def plot_rate_by_time(don, imp, regs,  hours = 1, start = '2000', stop = '2050', ylabel = 'donation rate', interactive = False, index = None):
     

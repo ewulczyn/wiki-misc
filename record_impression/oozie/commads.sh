@@ -1,7 +1,7 @@
 ssh -v bast1001.wikimedia.org
 
 
-rsync -r ~/wmf/ stat1002.eqiad.wmnet:~/wmf
+rsync -r ~/wmf/record_impression/oozie/ stat1002.eqiad.wmnet:~/wmf/record_impression/oozie
 
 
 

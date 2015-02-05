@@ -9,8 +9,27 @@ from collections import defaultdict
 import sys, traceback
 from abc import ABCMeta, abstractmethod
 from db_utils import *
+import hashlib
+import copy
 
 
+
+
+def query_lutetium_robust(query, params):
+    # if the client does not have mysqldb, this wont work
+    try:
+        return query_lutetium(query, params)
+    # so use ssh to query. This is not thread safe and absolutely rediculous
+    # 
+    except:
+        print "using old method"
+        ssh_params = copy.copy(params)
+        for k, v in ssh_params.iteritems():
+            if isinstance(v, basestring):
+                ssh_params[k] = "'" + v + "'"
+        query = query % ssh_params
+        file_name = str(hashlib.md5(query.encode()).hexdigest())
+        return query_lutetium_ssh(query, file_name);
 
 
 def get_banner_data(retrieverclass, banner_names,  start, stop):
@@ -59,11 +78,12 @@ class BannerDataRetriever(object):
         ON  ct.id = cs.contribution_tracking_id
         WHERE banner = %(banner)s
         AND ct.ts BETWEEN %(start_ts)s AND %(stop_ts)s
+        AND utm_medium = 'sitenotice'
         ORDER BY ct.ts; 
         """
 
 
-        d = query_lutetium(query, self.params)
+        d = query_lutetium_robust(query, self.params)
         d.index  = d['timestamp'].map(lambda t: pd.to_datetime(str(t)))
         del d['timestamp']
         d['impressions_seen'] = d['impressions_seen'].fillna(-1)
@@ -84,11 +104,12 @@ class BannerDataRetriever(object):
         AND co.id = ct.contribution_id
         AND ts BETWEEN %(start_ts)s AND %(stop_ts)s
         AND banner = %(banner)s
+        AND ct.utm_medium = 'sitenotice'
         order by ct.ts;
         """
 
 
-        d = query_lutetium(query, self.params)
+        d = query_lutetium_robust(query, self.params)
         d.index = d['timestamp'].map(lambda t: pd.to_datetime(str(t)))
         del d['timestamp']
         d['amount'] = d['amount'].fillna(0.0)
@@ -175,7 +196,7 @@ class OldBannerDataRetriever(BannerDataRetriever):
         ORDER BY timestamp;
         """
 
-        d = query_lutetium(query, self.params)
+        d = query_lutetium_robust(query, self.params)
         d.index = pd.to_datetime(d['timestamp'])
         del d['timestamp']
         d['count'] = d['count'].fillna(0)

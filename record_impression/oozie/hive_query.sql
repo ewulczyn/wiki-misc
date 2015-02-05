@@ -5,10 +5,28 @@ ADD JAR hdfs:///wmf/refinery/current/artifacts/refinery-hive.jar;
 CREATE TEMPORARY FUNCTION parse_ua as 'org.wikimedia.analytics.refinery.hive.UAParserUDF';
 
 
-DROP TABLE IF EXISTS ellery.oozie_impressions_${year}_${month}_${day}_${hour};
+CREATE TABLE IF NOT EXISTS ellery.oozie_impressions_${version} (
+  anonymous STRING,
+  banner STRING,
+  campaign STRING,
+  country STRING,
+  device STRING,
+  minute STRING,
+  project STRING,
+  reason STRING,
+  result STRING,
+  uselang STRING,
+  db STRING,
+  bucket INT,
+  spider BOOLEAN,
+  n INT
+)
+PARTITIONED BY (year INT, month INT, day INT);
+
+DROP TABLE IF EXISTS ellery.oozie_impressions_${year}_${month}_${day}_${hour}_${version};
 
 --This Is Really a Temporary Table need 0.14
-CREATE TABLE ellery.oozie_impressions_${year}_${month}_${day}_${hour} (
+CREATE TABLE ellery.oozie_impressions_${year}_${month}_${day}_${hour}_${version} (
   anonymous STRING,
   banner STRING,
   campaign STRING,
@@ -25,7 +43,7 @@ CREATE TABLE ellery.oozie_impressions_${year}_${month}_${day}_${hour} (
   n INT
 );
 
-INSERT INTO TABLE ellery.oozie_impressions_${year}_${month}_${day}_${hour}
+INSERT INTO TABLE ellery.oozie_impressions_${year}_${month}_${day}_${hour}_${version}
 
 SELECT 
   a.anonymous,
@@ -67,7 +85,7 @@ FROM (
         ELSE 0
       END as spider
 
-    FROM wmf_raw.webrequest 
+    FROM wmf.webrequest 
     
     WHERE uri_path = '/wiki/Special:RecordImpression'
       AND year = ${year}
@@ -92,8 +110,8 @@ GROUP BY
   a.spider;
 
  
-INSERT INTO TABLE ellery.oozie_impressions
+INSERT INTO TABLE ellery.oozie_impressions_${version}
 PARTITION (year = ${year}, month = ${month}, day = ${day})
-SELECT * FROM ellery.oozie_impressions_${year}_${month}_${day}_${hour};
+SELECT * FROM ellery.oozie_impressions_${year}_${month}_${day}_${hour}_${version};
 
-DROP TABLE ellery.oozie_impressions_${year}_${month}_${day}_${hour};
+DROP TABLE ellery.oozie_impressions_${year}_${month}_${day}_${hour}_${version};

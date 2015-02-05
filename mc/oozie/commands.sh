@@ -1,7 +1,7 @@
 ssh -v bast1001.wikimedia.org
 
 
-rsync -r ~/wmf/ stat1002.eqiad.wmnet:~/wmf
+rsync -rv ~/wmf/mc/oozie/ stat1002.eqiad.wmnet:~/wmf/mc/oozie
 
 hadoop fs -mkdir /user/ellery/mc
 hadoop fs -mkdir /user/ellery/mc/oozie

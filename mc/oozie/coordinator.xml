@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coordinator-app end="${stop_time}" frequency="${coord:days(1)}" name="${task}_coordinator" start="${start_time}" timezone="Universal" xmlns="uri:oozie:coordinator:0.4">
+<coordinator-app end="${stop_time}" frequency="${coord:days(1)}" name="${task}_coordinator_${version}" start="${start_time}" timezone="Universal" xmlns="uri:oozie:coordinator:0.4">
     <controls>
         <timeout>5760</timeout>
         <concurrency>1</concurrency>
@@ -7,30 +7,25 @@
         <throttle>2</throttle>
     </controls>
     <datasets>
-        <dataset frequency="${coord:hours(1)}" initial-instance="${start_time}" name="webrequest_text" timezone="Universal">
-            <uri-template>${webrequest_data_directory}/webrequest_text/hourly/${YEAR}/${MONTH}/${DAY}/${HOUR}</uri-template>
+        <dataset frequency="${coord:hours(1)}" initial-instance="${start_time}" name="webrequest" timezone="Universal">
+            <uri-template>${webrequest_data_directory}/webrequest_source=text/year=${YEAR}/month=${"$"}{MONTH + 0}/day=${"$"}{DAY + 0}/hour=${"$"}{HOUR + 0}</uri-template>
             <done-flag></done-flag>
-        </dataset>
-        <dataset frequency="${coord:days(1)}" initial-instance="${start_time}" name="record_state" timezone="Universal">
-            <uri-template>${state_directory}</uri-template>
-            <done-flag>${YEAR}-${MONTH}-${DAY}</done-flag>
         </dataset>
     </datasets>
     <input-events>
-        <data-in dataset="webrequest_text" name="input_webrequest_text">
-            <start-instance>${coord:current(-48)}</start-instance>
-            <end-instance>${coord:current(-25)}</end-instance>
+        <data-in dataset="webrequest" name="input_webrequest">
+            <start-instance>${coord:current(0)}</start-instance>
+            <end-instance>${coord:current(23)}</end-instance>
         </data-in>
     </input-events>
-    <output-events>
-        <data-out dataset="record_state" name="output_record_state">
-            <instance>${coord:current(0)}</instance>
-        </data-out>
-    </output-events>
-    <action>
+        <action>
         <workflow>
             <app-path>${workflow_file}</app-path>
             <configuration>
+                <property>
+                    <name>version</name>
+                    <value>${version}</value>
+                </property>
                 <property>
                     <name>task</name>
                     <value>${task}</value>
@@ -57,15 +52,15 @@
                 </property>
                 <property>
                     <name>year</name>
-                    <value>${coord:formatTime(coord:dateOffset(coord:nominalTime(), -2, 'DAY'), &quot;y&quot;)}</value>
+                    <value>${coord:formatTime(coord:nominalTime(), &quot;y&quot;)}</value>
                 </property>
                 <property>
                     <name>month</name>
-                    <value>${coord:formatTime(coord:dateOffset(coord:nominalTime(), -2, 'DAY'), &quot;M&quot;)}</value>
+                    <value>${coord:formatTime(coord:nominalTime(), &quot;M&quot;)}</value>
                 </property>
                 <property>
                     <name>day</name>
-                    <value>${coord:formatTime(coord:dateOffset(coord:nominalTime(), -2, 'DAY'), &quot;d&quot;)}</value>
+                    <value>${coord:formatTime(coord:nominalTime(), &quot;d&quot;)}</value>
                 </property>
             </configuration>
         </workflow>

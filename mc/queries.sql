@@ -16,8 +16,8 @@ STORED AS TEXTFILE;
 CREATE VIEW  main_pages AS
 SELECT page_title, page_id
 FROM en_page
-WHERE page_namespace = 0
-AND page_is_redirect = 0; 
+WHERE page_namespace = 0;
+--AND page_is_redirect = 0; 
 
 
 
