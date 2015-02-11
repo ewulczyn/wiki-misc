@@ -41,7 +41,6 @@ FROM (
       WHEN parse_url(referer,'HOST') LIKE '%twitter.%' THEN 'other-twitter'
       WHEN parse_url(referer,'HOST') LIKE '%t.co%' THEN 'other-twitter'
       WHEN parse_url(referer,'HOST') LIKE '%bing.%' THEN 'other-bing'
-      WHEN parse_url(referer,'HOST') LIKE '%baidu.%' THEN 'other-baidu'
       WHEN referer == '' THEN 'other-empty'
       WHEN referer == '-' THEN 'other-empty'
       WHEN referer IS NULL THEN 'other-empty'
