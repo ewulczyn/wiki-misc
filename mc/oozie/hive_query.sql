@@ -29,9 +29,8 @@ FROM (
   SELECT 
     REGEXP_EXTRACT(reflect("java.net.URLDecoder", "decode", uri_path), '/wiki/(.*)', 1) as curr,
     CASE
-      -- when prev has content
       WHEN parse_url(referer,'HOST') LIKE '%google.%' THEN 'other-google'
-
+      -- when prev has content
       WHEN parse_url(referer,'HOST') = 'en.wikipedia.org' AND LENGTH(REGEXP_EXTRACT(parse_url(referer,'PATH'), '/wiki/(.*)', 1)) > 1
           THEN REGEXP_EXTRACT(parse_url(reflect("java.net.URLDecoder", "decode", referer),'PATH'), '/wiki/(.*)', 1)
       WHEN parse_url(referer,'HOST') LIKE '%.wikipedia.org%' THEN 'other-wikipedia'
