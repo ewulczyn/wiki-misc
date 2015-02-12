@@ -41,7 +41,6 @@ FROM (
       WHEN parse_url(referer,'HOST') LIKE '%twitter.%' THEN 'other-twitter'
       WHEN parse_url(referer,'HOST') LIKE '%t.co%' THEN 'other-twitter'
       WHEN parse_url(referer,'HOST') LIKE '%bing.%' THEN 'other-bing'
-      WHEN parse_url(referer,'HOST') LIKE '%baidu.%' THEN 'other-baidu'
       WHEN referer == '' THEN 'other-empty'
       WHEN referer == '-' THEN 'other-empty'
       WHEN referer IS NULL THEN 'other-empty'
@@ -67,7 +66,7 @@ FROM (
 
     -- Make sure curr page has content
     AND LENGTH(REGEXP_EXTRACT(uri_path, '/wiki/(.*)', 1)) > 0
-    -- Try to only get articles in main namespace
+    -- Try to only get articles in main namespace. MW craziness.
     AND uri_path NOT LIKE '/wiki/Talk:%' 
     AND uri_path NOT LIKE '/wiki/User:%' 
     AND uri_path NOT LIKE '/wiki/User_talk:%'
@@ -102,7 +101,8 @@ FROM (
 
 
 
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Talk:%' 
+    AND (PARSE_URL(referer, 'PATH') is NULL
+    OR (PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Talk:%' 
     AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/User:%' 
     AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/User_talk:%'
     AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Wikipedia:%'
@@ -132,8 +132,7 @@ FROM (
     AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Topic_talk:%'
     AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Data:%'
     AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Special:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Media:%'
-
+    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Media:%'))
 
 ) a
 WHERE curr != prev
