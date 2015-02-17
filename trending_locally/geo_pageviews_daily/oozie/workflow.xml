@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workflow-app name="${task}_workflow_${version} ${year},${month},${day}" xmlns="uri:oozie:workflow:0.4">
+    <parameters>
+        <property>
+            <name>queue_name</name>
+            <value>default</value>
+        </property>
+        <!-- Required properties -->
+        <property>
+            <name>version</name>
+        </property>
+        <property>
+            <name>task</name>
+        </property>
+        <property>
+            <name>name_node</name>
+        </property>
+        <property>
+            <name>job_tracker</name>
+        </property>
+        <property>
+            <name>hive_site_xml</name>
+            <description>hive-site.xml file path in HDFS</description>
+        </property>
+        <property>
+            <name>user</name>
+            <description>user db</description>
+        </property>
+        <property>
+            <name>year</name>
+            <description>The partition's year</description>
+        </property>
+        <property>
+            <name>month</name>
+            <description>The partition's month</description>
+        </property>
+        <property>
+            <name>day</name>
+            <description>The partition's day</description>
+        </property>
+    </parameters>
+
+    <start to="count_impressions"/>
+
+    <action name="count_impressions">
+        <hive xmlns="uri:oozie:hive-action:0.3">
+            <job-tracker>${job_tracker}</job-tracker>
+            <name-node>${name_node}</name-node>
+            <job-xml>${hive_site_xml}</job-xml>
+            <configuration>
+                <property>
+                    <name>mapreduce.job.queuename</name>
+                    <value>${queue_name}</value>
+                </property>
+                <property>
+                    <name>hive.exec.scratchdir</name>
+                    <value>/tmp/hive-${user}</value>
+                </property>
+            </configuration>
+            <script>${hive_script}</script>
+            <param>year=${year}</param>
+            <param>month=${month}</param>
+            <param>day=${day}</param>
+            <param>database=${user}</param>
+            <param>version=${version}</param>
+            <param>task=${task}</param>
+        </hive>
+        <ok to="end"/>
+        <error to="kill"/>
+    </action>
+
+    <kill name="kill">
+        <message>Action failed, error message[${wf:errorMessage(wf:lastErrorNode())}]</message>
+    </kill>
+    <end name="end"/>
+
+
+
+</workflow-app>
