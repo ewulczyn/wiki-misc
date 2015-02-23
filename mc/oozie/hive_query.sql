@@ -3,6 +3,7 @@ USE ${database};
 
 ADD JAR hdfs:///wmf/refinery/current/artifacts/refinery-hive.jar;
 CREATE TEMPORARY FUNCTION parse_ua as 'org.wikimedia.analytics.refinery.hive.UAParserUDF';
+CREATE TEMPORARY FUNCTION is_crawler as 'org.wikimedia.analytics.refinery.hive.IsCrawlerUDF';
 
 
 CREATE TABLE IF NOT EXISTS ellery.oozie_mc_${version} (
@@ -24,7 +25,7 @@ CREATE TABLE ellery.mc_${year}_${month}_${day}_${version} (
 
 INSERT INTO TABLE ellery.mc_${year}_${month}_${day}_${version}
 
-SELECT prev, curr, COUNT(*) n
+SELECT prev, curr, SUM(n) AS n
 FROM (
   SELECT 
     REGEXP_EXTRACT(reflect("java.net.URLDecoder", "decode", uri_path), '/wiki/(.*)', 1) as curr,
@@ -32,7 +33,7 @@ FROM (
       WHEN parse_url(referer,'HOST') LIKE '%google.%' THEN 'other-google'
       -- when prev has content
       WHEN parse_url(referer,'HOST') = 'en.wikipedia.org' AND LENGTH(REGEXP_EXTRACT(parse_url(referer,'PATH'), '/wiki/(.*)', 1)) > 1
-          THEN REGEXP_EXTRACT(parse_url(reflect("java.net.URLDecoder", "decode", referer),'PATH'), '/wiki/(.*)', 1)
+          THEN reflect("java.net.URLDecoder", "decode", REGEXP_EXTRACT(parse_url(referer,'PATH'), '/wiki/(.*)', 1))
       WHEN parse_url(referer,'HOST') LIKE '%.wikipedia.org%' THEN 'other-wikipedia'
       WHEN parse_url(referer,'HOST') RLIKE '\\.wiki.*\\.org' THEN 'other-internal'
       WHEN parse_url(referer,'HOST') LIKE '%yahoo.%' THEN 'other-yahoo'
@@ -44,95 +45,107 @@ FROM (
       WHEN referer == '-' THEN 'other-empty'
       WHEN referer IS NULL THEN 'other-empty'
       ELSE 'other'
-    END as prev
-  FROM wmf.webrequest
-  --select the right partition
-  WHERE webrequest_source = 'text'
-    AND year = ${year}
-    AND month = ${month}
-    AND day = ${day}
+    END as prev, 
+    n
+    FROM 
+      (SELECT uri_path, referer, ip, x_forwarded_for, user_agent, dt, count(*) as n FROM wmf.webrequest
+        WHERE webrequest_source = 'text'
+        AND year = ${year}
+        AND month = ${month}
+        AND day = ${day}
+        -- only enwiki
+        AND uri_host = 'en.wikipedia.org'
 
-    -- only enwiki
-    AND uri_host = 'en.wikipedia.org'
+        -- make sure you get a human pageview
+        AND (is_pageview OR
+        -- or fish for redlinks
+       (content_type in ('text/html\; charset=iso-8859-1',
+                         'text/html\; charset=ISO-8859-1',
+                         'text/html',
+                         'text/html\; charset=utf-8',
+                         'text/html\; charset=UTF-8') AND  http_status = '404' )
+       )
+        AND parse_ua(user_agent)['device_family'] != 'Spider'
+        AND is_crawler(user_agent) = 0
+        AND user_agent != 'Twisted PageGetter'
+        
+        --some media-wiki bug
+        AND uri_path != '/wiki/Undefined'
+        AND uri_path != '/wiki/undefined'
 
-    -- make sure you get a human pageview
-    AND is_pageview
-    AND parse_ua(user_agent)['device_family'] != 'Spider'
+        -- Make sure curr page has content
+        AND LENGTH(REGEXP_EXTRACT(uri_path, '/wiki/(.*)', 1)) > 0
+        -- Try to only get articles in main namespace. MW craziness.
+        AND uri_path NOT LIKE '/wiki/Talk:%' 
+        AND uri_path NOT LIKE '/wiki/User:%' 
+        AND uri_path NOT LIKE '/wiki/User_talk:%'
+        AND uri_path NOT LIKE '/wiki/Wikipedia:%'
+        AND uri_path NOT LIKE '/wiki/Wikipedia_talk:%'
+        AND uri_path NOT LIKE '/wiki/File:%'
+        AND uri_path NOT LIKE '/wiki/File_talk:%'
+        AND uri_path NOT LIKE '/wiki/MediaWiki:%'
+        AND uri_path NOT LIKE '/wiki/MediaWiki_talk:%'
+        AND uri_path NOT LIKE '/wiki/Template:%'
+        AND uri_path NOT LIKE '/wiki/Template_talk:%'
+        AND uri_path NOT LIKE '/wiki/Help:%'
+        AND uri_path NOT LIKE '/wiki/Help_talk:%'
+        AND uri_path NOT LIKE '/wiki/Category:%'
+        AND uri_path NOT LIKE '/wiki/Category_talk:%'
+        AND uri_path NOT LIKE '/wiki/Portal:%'
+        AND uri_path NOT LIKE '/wiki/Portal_talk:%'
+        AND uri_path NOT LIKE '/wiki/Book:%'
+        AND uri_path NOT LIKE '/wiki/Book_talk:%'
+        AND uri_path NOT LIKE '/wiki/Draft:%'
+        AND uri_path NOT LIKE '/wiki/Draft_talk:%'
+        AND uri_path NOT LIKE '/wiki/EducationProgram:%'
+        AND uri_path NOT LIKE '/wiki/EducationProgram_talk:%'
+        AND uri_path NOT LIKE '/wiki/TimedText:%'
+        AND uri_path NOT LIKE '/wiki/TimedText_talk:%'
+        AND uri_path NOT LIKE '/wiki/Module:%'
+        AND uri_path NOT LIKE '/wiki/Module_talk:%'
+        AND uri_path NOT LIKE '/wiki/Topic:%'
+        AND uri_path NOT LIKE '/wiki/Topic_talk:%'
+        AND uri_path NOT LIKE '/wiki/Data:%'
+        AND uri_path NOT LIKE '/wiki/Special:%'
+        AND uri_path NOT LIKE '/wiki/Media:%'
+
+        AND (PARSE_URL(referer, 'PATH') is NULL
+        OR (PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Talk:%' 
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/User:%' 
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/User_talk:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Wikipedia:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Wikipedia_talk:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/File:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/File_talk:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/MediaWiki:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/MediaWiki_talk:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Template:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Template_talk:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Help:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Help_talk:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Category:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Category_talk:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Portal:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Portal_talk:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Book:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Book_talk:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Draft:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Draft_talk:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/EducationProgram:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/EducationProgram_talk:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/TimedText:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/TimedText_talk:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Module:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Module_talk:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Topic:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Topic_talk:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Data:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Special:%'
+        AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Media:%'))
     
-    --some media-wiki bug
-    AND uri_path != '/wiki/Undefined'
-    AND uri_path != '/wiki/undefined'
-
-    -- Make sure curr page has content
-    AND LENGTH(REGEXP_EXTRACT(uri_path, '/wiki/(.*)', 1)) > 0
-    -- Try to only get articles in main namespace. MW craziness.
-    AND uri_path NOT LIKE '/wiki/Talk:%' 
-    AND uri_path NOT LIKE '/wiki/User:%' 
-    AND uri_path NOT LIKE '/wiki/User_talk:%'
-    AND uri_path NOT LIKE '/wiki/Wikipedia:%'
-    AND uri_path NOT LIKE '/wiki/Wikipedia_talk:%'
-    AND uri_path NOT LIKE '/wiki/File:%'
-    AND uri_path NOT LIKE '/wiki/File_talk:%'
-    AND uri_path NOT LIKE '/wiki/MediaWiki:%'
-    AND uri_path NOT LIKE '/wiki/MediaWiki_talk:%'
-    AND uri_path NOT LIKE '/wiki/Template:%'
-    AND uri_path NOT LIKE '/wiki/Template_talk:%'
-    AND uri_path NOT LIKE '/wiki/Help:%'
-    AND uri_path NOT LIKE '/wiki/Help_talk:%'
-    AND uri_path NOT LIKE '/wiki/Category_talk:%'
-    AND uri_path NOT LIKE '/wiki/Portal:%'
-    AND uri_path NOT LIKE '/wiki/Portal_talk:%'
-    AND uri_path NOT LIKE '/wiki/Book:%'
-    AND uri_path NOT LIKE '/wiki/Book_talk:%'
-    AND uri_path NOT LIKE '/wiki/Draft:%'
-    AND uri_path NOT LIKE '/wiki/Draft_talk:%'
-    AND uri_path NOT LIKE '/wiki/EducationProgram:%'
-    AND uri_path NOT LIKE '/wiki/EducationProgram_talk:%'
-    AND uri_path NOT LIKE '/wiki/TimedText:%'
-    AND uri_path NOT LIKE '/wiki/TimedText_talk:%'
-    AND uri_path NOT LIKE '/wiki/Module:%'
-    AND uri_path NOT LIKE '/wiki/Module_talk:%'
-    AND uri_path NOT LIKE '/wiki/Topic:%'
-    AND uri_path NOT LIKE '/wiki/Topic_talk:%'
-    AND uri_path NOT LIKE '/wiki/Data:%'
-    AND uri_path NOT LIKE '/wiki/Special:%'
-    AND uri_path NOT LIKE '/wiki/Media:%'
-
-
-
-    AND (PARSE_URL(referer, 'PATH') is NULL
-    OR (PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Talk:%' 
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/User:%' 
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/User_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Wikipedia:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Wikipedia_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/File:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/File_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/MediaWiki:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/MediaWiki_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Template:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Template_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Help:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Help_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Category_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Portal:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Portal_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Book:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Book_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Draft:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Draft_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/EducationProgram:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/EducationProgram_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/TimedText:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/TimedText_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Module:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Module_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Topic:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Topic_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Data:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Special:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Media:%'))
-
+        GROUP BY uri_path, referer, ip, x_forwarded_for, user_agent, dt
+        HAVING COUNT(*) = 1
+        ) clean_requests
 ) a
 WHERE curr != prev
 GROUP BY curr, prev;
