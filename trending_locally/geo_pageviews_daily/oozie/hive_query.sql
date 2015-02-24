@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS ellery.${task} (
   project STRING,
   variant STRING,
   page_title STRING,
-  access_method STRING,
   country STRING,
   n INT)
 PARTITIONED BY (year INT, month INT, day INT);
@@ -32,18 +31,16 @@ CREATE TABLE ellery.${task}_${year}_${month}_${day} (
   project STRING,
   variant STRING,
   page_title STRING,
-  access_method STRING,
   country STRING,
   n INT
 );
 
 INSERT INTO TABLE ellery.${task}_${year}_${month}_${day}
-  SELECT project, variant, page_title, access_method, country, count(*) as n FROM
+  SELECT project, variant, page_title, country, count(*) as n FROM
   (SELECT
     get_project(uri_host) as project,
     get_variant(uri_host) as variant,
     REGEXP_EXTRACT(reflect("java.net.URLDecoder", "decode", uri_path), '^/[^/]*/(.*)', 1) as page_title,
-    get_access_method(uri_host, user_agent) as access_method,
     geocode(resolve_ip(ip, x_forwarded_for)) as country
     FROM wmf.webrequest TABLESAMPLE(BUCKET 1 OUT OF 64 ON rand())
     WHERE year = ${year}
@@ -53,7 +50,7 @@ INSERT INTO TABLE ellery.${task}_${year}_${month}_${day}
     AND is_pageview
     AND is_crawler(user_agent) = 0
     AND parse_ua(user_agent)['device_family'] != 'Spider') a
-  GROUP BY project, variant, page_title, access_method, country;
+  GROUP BY project, variant, page_title, country;
 
 
 INSERT INTO TABLE ellery.${task}
@@ -61,3 +58,6 @@ PARTITION (year = ${year}, month = ${month}, day = ${day})
 SELECT * FROM ellery.${task}_${year}_${month}_${day};
 
 DROP TABLE ellery.${task}_${year}_${month}_${day};
+
+ALTER TABLE ${task} DROP IF EXISTS PARTITION(year = ${last_week_year}, month = ${last_week_month}, day = ${last_week_day});
+

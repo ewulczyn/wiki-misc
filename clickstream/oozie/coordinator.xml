@@ -1,23 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <coordinator-app end="${stop_time}" frequency="${coord:days(1)}" name="${task}_coordinator_${version}" start="${start_time}" timezone="Universal" xmlns="uri:oozie:coordinator:0.4">
     <controls>
-        <timeout>11520</timeout>
-        <concurrency>1</concurrency>
+        <timeout>5760</timeout>
+        <concurrency>3</concurrency>
         <execution>FIFO</execution>
-        <throttle>2</throttle>
+        <throttle>3</throttle>
     </controls>
     <datasets>
         <dataset frequency="${coord:hours(1)}" initial-instance="${start_time}" name="webrequest" timezone="Universal">
             <uri-template>${webrequest_data_directory}/webrequest_source=text/year=${YEAR}/month=${"$"}{MONTH + 0}/day=${"$"}{DAY + 0}/hour=${"$"}{HOUR + 0}</uri-template>
             <done-flag></done-flag>
-        </dataset>
-
-        <dataset name="daily_geo_output"
-                 frequency="${coord:days(1)}"
-                 initial-instance="${start_time}"
-                 timezone="Universal">
-            <uri-template>${hive_task_table_directory}/year=${YEAR}/month=${"$"}{MONTH + 0}/day=${"$"}{DAY + 0}</uri-template>
-            <done-flag>_SUCCESS</done-flag>
         </dataset>
     </datasets>
     <input-events>
@@ -26,12 +18,6 @@
             <end-instance>${coord:current(23)}</end-instance>
         </data-in>
     </input-events>
-    <output-events>
-        <data-out dataset="daily_geo_output" name="output_daily_geo_output">
-           <instance>${coord:current(0)}</instance>
-         </data-out>
-    </output-events>
-
         <action>
         <workflow>
             <app-path>${workflow_file}</app-path>
@@ -75,18 +61,6 @@
                 <property>
                     <name>day</name>
                     <value>${coord:formatTime(coord:nominalTime(), &quot;d&quot;)}</value>
-                </property>
-                <property>
-                    <name>last_week_year</name>
-                    <value>${coord:formatTime(coord:dateOffset(coord:nominalTime(), -7, 'DAY'), &quot;y&quot;)}</value>
-                </property>
-                <property>
-                    <name>last_week_month</name>
-                    <value>${coord:formatTime(coord:dateOffset(coord:nominalTime(), -7, 'DAY'), &quot;M&quot;)}</value>
-                </property>
-                <property>
-                    <name>last_week_day</name>
-                    <value>${coord:formatTime(coord:dateOffset(coord:nominalTime(), -7, 'DAY'), &quot;d&quot;)}</value>
                 </property>
             </configuration>
         </workflow>

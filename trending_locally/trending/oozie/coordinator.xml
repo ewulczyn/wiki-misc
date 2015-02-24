@@ -7,31 +7,17 @@
         <throttle>2</throttle>
     </controls>
     <datasets>
-        <dataset frequency="${coord:hours(1)}" initial-instance="${start_time}" name="webrequest" timezone="Universal">
-            <uri-template>${webrequest_data_directory}/webrequest_source=text/year=${YEAR}/month=${"$"}{MONTH + 0}/day=${"$"}{DAY + 0}/hour=${"$"}{HOUR + 0}</uri-template>
+        <dataset frequency="${coord:hours(1)}" initial-instance="${start_time}" name="geo_pageviews_daily" timezone="Universal">
+            <uri-template>${geo_pageviews_daily_directory}/year=${YEAR}/month=${"$"}{MONTH + 0}/day=${"$"}{DAY + 0}</uri-template>
             <done-flag></done-flag>
-        </dataset>
-
-        <dataset name="daily_geo_output"
-                 frequency="${coord:days(1)}"
-                 initial-instance="${start_time}"
-                 timezone="Universal">
-            <uri-template>${hive_task_table_directory}/year=${YEAR}/month=${"$"}{MONTH + 0}/day=${"$"}{DAY + 0}</uri-template>
-            <done-flag>_SUCCESS</done-flag>
         </dataset>
     </datasets>
     <input-events>
-        <data-in dataset="webrequest" name="input_webrequest">
-            <start-instance>${coord:current(0)}</start-instance>
-            <end-instance>${coord:current(23)}</end-instance>
+        <data-in dataset="geo_pageviews_daily" name="input_geo_pageviews_daily">
+            <start-instance>${coord:current(-6)}</start-instance>
+            <end-instance>${coord:current(0)}</end-instance>
         </data-in>
     </input-events>
-    <output-events>
-        <data-out dataset="daily_geo_output" name="output_daily_geo_output">
-           <instance>${coord:current(0)}</instance>
-         </data-out>
-    </output-events>
-
         <action>
         <workflow>
             <app-path>${workflow_file}</app-path>

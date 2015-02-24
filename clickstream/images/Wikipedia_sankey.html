@@ -1,0 +1,53 @@
+
+
+
+<html>
+<body>
+<script type="text/javascript"
+           src="https://www.google.com/jsapi?autoload={'modules':[{'name':'visualization','version':'1.1','packages':['sankey']}]}">
+</script>
+
+<div id="sankey_multiple" style="width: 900px; height: 300px;"></div>
+
+<script type="text/javascript">
+google.setOnLoadCallback(drawChart);
+   function drawChart() {
+    var data = new google.visualization.DataTable();
+    data.addColumn('string', 'From');
+    data.addColumn('string', 'To');
+    data.addColumn('number', 'Weight');
+    data.addRows([
+      ['other-empty', 'Wikipedia', 404833],
+      ['other-google', 'Wikipedia', 331315],
+      ['Main_Page', 'Wikipedia', 72378],
+      //['other', 'Wikipedia', 47795],
+      ['other-wikipedia', 'Wikipedia', 29536],
+      ['other-bing', 'Wikipedia', 17657],
+      ['Wikipedia', ' Main_Page', 26678],
+      ['Wikipedia', ' Jimmy_Wales', 4399],
+      ['Wikipedia', ' Larry_Sanger', 2691],
+      ['Wikipedia', ' Wikimedia_Foundation', 2574],
+      ['Wikipedia', ' Alexa_Internet', 1876],
+      //['Wikipedia', ' Wikipedia_(disambiguation)', 1782],
+      //['Wikipedia', ' Criticism_of_Wikipedia', 1087],
+      //['Wikipedia', ' Internet_encyclopedia', 1028],
+      //['Wikipedia', ' Chris_Kyle', 924],
+    ]);
+
+    // Set chart options
+    var options = {
+      width: 600,
+      sankey: {
+        link: { color: { fill: '#grey', fillOpacity: 0.3 } },
+        node: { color: { fill: '#a61d4c' },
+                label: { color: 'black' } },
+      }
+    };
+
+    // Instantiate and draw our chart, passing in some options.
+    var chart = new google.visualization.Sankey(document.getElementById('sankey_multiple'));
+    chart.draw(data, options);
+   }
+</script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+
+
+
+<html>
+<body>
+<script type="text/javascript"
+           src="https://www.google.com/jsapi?autoload={'modules':[{'name':'visualization','version':'1.1','packages':['sankey']}]}">
+</script>
+
+<div id="sankey_multiple" style="width: 900px; height: 300px;"></div>
+
+<script type="text/javascript">
+google.setOnLoadCallback(drawChart);
+   function drawChart() {
+    var data = new google.visualization.DataTable();
+    data.addColumn('string', 'From');
+    data.addColumn('string', 'To');
+    data.addColumn('number', 'Weight');
+    data.addRows([
+      ['other-google', 'Markov_chain', 24715],
+      ['other-empty', 'Markov_chain', 5714],
+      //['other', 'Markov_chain', 2442],
+      ['Markov_chain_Monte_Carlo', 'Markov_chain', 1151],
+      ['other-wikipedia', 'Markov_chain', 1148],
+      ['Stochastic_process', 'Markov_chain', 743],
+      //['Markov_model', 'Markov_chain', 722],
+      //['other-bing', 'Markov_chain', 458],
+      //['Random_walk', 'Markov_chain', 370],
+      //['Markov_process', 'Markov_chain', 322]
+      ['Markov_chain', ' Andrey_Markov', 983],
+      ['Markov_chain', ' Examples_of_Markov_chains', 775],
+      ['Markov_chain', ' Stochastic_process', 659],
+      ['Markov_chain', ' Markov_property', 597],
+      ['Markov_chain', ' Continuous-time_Markov_chain', 454]
+    ]);
+
+    // Set chart options
+    var options = {
+      width: 600,
+      sankey: {
+        link: { color: { fill: '#grey', fillOpacity: 0.3 } },
+        node: { color: { fill: '#a61d4c' },
+                label: { color: 'black' } },
+      }
+    };
+
+    // Instantiate and draw our chart, passing in some options.
+    var chart = new google.visualization.Sankey(document.getElementById('sankey_multiple'));
+    chart.draw(data, options);
+   }
+</script>
+</body>
+</html>

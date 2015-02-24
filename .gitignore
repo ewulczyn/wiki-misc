@@ -7,6 +7,8 @@ __pycache__/
 *.csv
 *.png
 *.ipynb_checkpoints
+*.gz
+*.zip
 #OSX
 *.DS_Store
 
