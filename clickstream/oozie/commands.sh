@@ -1,14 +1,12 @@
 ssh -v bast1001.wikimedia.org
 
 
-rsync -rv ~/wmf/mc/oozie/ stat1002.eqiad.wmnet:~/wmf/mc/oozie
+rsync -rv ~/wmf/clickstream/oozie/ stat1002.eqiad.wmnet:~/wmf/clickstream/oozie
 
-hadoop fs -mkdir /user/ellery/mc
-hadoop fs -mkdir /user/ellery/mc/oozie
-
-
+hadoop fs -mkdir /user/ellery/clickstream
+hadoop fs -mkdir /user/ellery/clickstream/oozie
 
 
-hadoop fs -rm -r -f  /user/ellery/mc/oozie/*
-hadoop fs -put ~/wmf/mc/oozie/* /user/ellery/mc/oozie/
-oozie job -oozie http://analytics1027.eqiad.wmnet:11000/oozie -run -config ~/wmf/mc/oozie/coordinator.properties
+hadoop fs -rm -r -f  /user/ellery/clickstream/oozie/*
+hadoop fs -put ~/wmf/clickstream/oozie/* /user/ellery/clickstream/oozie/
+oozie job -oozie http://analytics1027.eqiad.wmnet:11000/oozie -run -config ~/wmf/clickstream/oozie/coordinator.properties

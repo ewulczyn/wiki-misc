@@ -9,7 +9,7 @@ CREATE TEMPORARY FUNCTION is_crawler as 'org.wikimedia.analytics.refinery.hive.I
 CREATE TEMPORARY FUNCTION  resolve_ip as 'org.wikimedia.analytics.refinery.hive.ClientIpUDF';
 
 -- create a table that will contain the daily clickstream data
-CREATE TABLE IF NOT EXISTS ellery.oozie_clickstream_${version} (
+CREATE TABLE IF NOT EXISTS ellery.clickstream_${version} (
   prev STRING,
   curr STRING,
   n BIGINT
@@ -18,10 +18,15 @@ PARTITIONED BY (year INT, month INT, day INT);
 
 
 -- create a view that corresponds to requests that are relevant for the clickstream data set
--- we include pageviews of artilces in the main namespace of enwiki
+-- we include pageviews of articles in the main namespace of enwiki
 DROP VIEW IF EXISTS ellery.relevant_requests_${year}_${month}_${day}_${version};
 CREATE VIEW ellery.relevant_requests_${year}_${month}_${day}_${version} AS
-    SELECT resolve_ip(ip, x_forwarded_for) as ip, user_agent, referer, SUBSTR(dt,1, 17) AS minute , SUBSTR(dt,18, 2) AS second, uri_path FROM wmf.webrequest
+    SELECT resolve_ip(ip, x_forwarded_for) as ip,
+    user_agent,
+    referer, SUBSTR(dt,1, 17) AS minute,
+    SUBSTR(dt, 18) AS second,
+    uri_path
+    FROM wmf.webrequest
     WHERE webrequest_source = 'text'
     AND year = ${year}
     AND month = ${month}
@@ -85,42 +90,7 @@ CREATE VIEW ellery.relevant_requests_${year}_${month}_${day}_${version} AS
     AND uri_path NOT LIKE '/wiki/Topic_talk:%'
     AND uri_path NOT LIKE '/wiki/Data:%'
     AND uri_path NOT LIKE '/wiki/Special:%'
-    AND uri_path NOT LIKE '/wiki/Media:%'
-
-    -- also exclude 
-    AND (PARSE_URL(referer, 'PATH') is NULL
-    OR (PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Talk:%' 
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/User:%' 
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/User_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Wikipedia:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Wikipedia_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/File:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/File_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/MediaWiki:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/MediaWiki_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Template:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Template_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Help:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Help_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Category:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Category_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Portal:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Portal_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Book:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Book_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Draft:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Draft_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/EducationProgram:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/EducationProgram_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/TimedText:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/TimedText_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Module:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Module_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Topic:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Topic_talk:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Data:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Special:%'
-    AND PARSE_URL(referer, 'PATH') NOT LIKE '/wiki/Media:%'));
+    AND uri_path NOT LIKE '/wiki/Media:%';
 
 
 -- create a view corresponding to relvant requests where requests from crawlers are exluded
@@ -129,12 +99,12 @@ DROP VIEW IF EXISTS ellery.throttled_requests_${year}_${month}_${day}_${version}
 
 CREATE VIEW ellery.throttled_requests_${year}_${month}_${day}_${version}
 AS SELECT TRANSFORM(
-    x.ip, 
-    x.user_agent, 
-    x.referer,
-    x.minute,
-    x.second, 
-    x.uri_path)
+x.ip, 
+x.user_agent, 
+x.referer,
+x.minute,
+x.second, 
+x.uri_path)
 USING 'python throttle.py'
 AS 
 ip, 
@@ -144,21 +114,21 @@ minute,
 second, 
 uri_path
 FROM 
-(SELECT
-    ip, 
-    user_agent, 
-    referer,
-    minute,
-    second, 
-    uri_path
-FROM ellery.relevant_requests_${year}_${month}_${day}_${version}
+    (SELECT
+        ip, 
+        user_agent, 
+        referer,
+        minute,
+        second, 
+        uri_path
+    FROM ellery.relevant_requests_${year}_${month}_${day}_${version}
     DISTRIBUTE BY (
-    ip, 
-    user_agent, 
-    referer,
-    minute
-    )
-  SORT BY ip, user_agent, referer, minute, second) x;
+        ip, 
+        user_agent, 
+        referer,
+        minute
+        )
+    SORT BY ip, user_agent, referer, minute, second) x;
 
 
 -- create a "temporary" table to hold the days worth of clickstream data
@@ -173,39 +143,75 @@ CREATE TABLE ellery.clickstream_${year}_${month}_${day}_${version} (
 );
 
 -- finally map referers to a set of predefined categories
--- and insert into the "temporary" 
+-- and insert into the "temporary" table
 INSERT INTO TABLE ellery.clickstream_${year}_${month}_${day}_${version}
 SELECT prev, curr, count(*) AS n
 FROM (
   SELECT 
     REGEXP_EXTRACT(reflect("java.net.URLDecoder", "decode", uri_path), '/wiki/(.*)', 1) as curr,
     CASE
-      WHEN parse_url(referer,'HOST') LIKE '%google.%' THEN 'other-google'
-      -- when prev has content
-      WHEN parse_url(referer,'HOST') = 'en.wikipedia.org' AND LENGTH(REGEXP_EXTRACT(parse_url(referer,'PATH'), '/wiki/(.*)', 1)) > 1
-          THEN reflect("java.net.URLDecoder", "decode", REGEXP_EXTRACT(parse_url(referer,'PATH'), '/wiki/(.*)', 1))
-      WHEN parse_url(referer,'HOST') LIKE '%.wikipedia.org%' THEN 'other-wikipedia'
-      WHEN parse_url(referer,'HOST') RLIKE '\\.wiki.*\\.org' THEN 'other-internal'
-      WHEN parse_url(referer,'HOST') LIKE '%yahoo.%' THEN 'other-yahoo'
-      WHEN parse_url(referer,'HOST') LIKE '%facebook.%' THEN 'other-facebook'
-      WHEN parse_url(referer,'HOST') LIKE '%twitter.%' THEN 'other-twitter'
-      WHEN parse_url(referer,'HOST') LIKE '%t.co%' THEN 'other-twitter'
-      WHEN parse_url(referer,'HOST') LIKE '%bing.%' THEN 'other-bing'
-      WHEN referer == '' THEN 'other-empty'
-      WHEN referer == '-' THEN 'other-empty'
-      WHEN referer IS NULL THEN 'other-empty'
-      ELSE 'other'
+        WHEN referer == '' THEN 'other-empty'
+        WHEN referer == '-' THEN 'other-empty'
+        WHEN referer IS NULL THEN 'other-empty'
+        WHEN PARSE_URL(referer, 'PATH') is NULL THEN 'other'
+        WHEN parse_url(referer,'HOST') = 'en.wikipedia.org'
+            AND LENGTH(REGEXP_EXTRACT(parse_url(referer,'PATH'), '/wiki/(.*)', 1)) > 1
+            AND (PARSE_URL(referer, 'PATH')  LIKE '/wiki/Talk:%' 
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/User:%' 
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/User_talk:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Wikipedia:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Wikipedia_talk:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/File:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/File_talk:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/MediaWiki:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/MediaWiki_talk:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Template:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Template_talk:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Help:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Help_talk:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Category:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Category_talk:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Portal:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Portal_talk:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Book:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Book_talk:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Draft:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Draft_talk:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/EducationProgram:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/EducationProgram_talk:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/TimedText:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/TimedText_talk:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Module:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Module_talk:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Topic:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Topic_talk:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Data:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Special:%'
+                OR PARSE_URL(referer, 'PATH') LIKE '/wiki/Media:%')
+            THEN 'other-wikipedia'
+        WHEN parse_url(referer,'HOST') = 'en.wikipedia.org' AND LENGTH(REGEXP_EXTRACT(parse_url(referer,'PATH'), '/wiki/(.*)', 1)) > 1
+            THEN reflect("java.net.URLDecoder", "decode", REGEXP_EXTRACT(parse_url(referer,'PATH'), '/wiki/(.*)', 1))
+        WHEN parse_url(referer,'HOST') LIKE '%.wikipedia.org%' THEN 'other-wikipedia'
+        WHEN parse_url(referer,'HOST') RLIKE '\\.wiki.*\\.org' THEN 'other-internal'
+        WHEN parse_url(referer,'HOST') LIKE '%google.%' THEN 'other-google'
+        WHEN parse_url(referer,'HOST') LIKE '%yahoo.%' THEN 'other-yahoo'
+        WHEN parse_url(referer,'HOST') LIKE '%facebook.%' THEN 'other-facebook'
+        WHEN parse_url(referer,'HOST') LIKE '%twitter.%' THEN 'other-twitter'
+        WHEN parse_url(referer,'HOST') LIKE '%t.co%' THEN 'other-twitter'
+        WHEN parse_url(referer,'HOST') LIKE '%bing.%' THEN 'other-bing'
+        ELSE 'other-other'
     END as prev
     FROM  ellery.throttled_requests_${year}_${month}_${day}_${version}
 ) a
 WHERE curr != prev
 GROUP BY curr, prev;
 
-
-INSERT INTO TABLE ellery.oozie_clickstream_${version}
+-- transfer data from the temporary table to the final table
+INSERT INTO TABLE ellery.clickstream_${version}
 PARTITION (year = ${year}, month = ${month}, day = ${day})
 SELECT * FROM ellery.clickstream_${year}_${month}_${day}_${version};
 
+-- drop temporary, day specific views and tables
 DROP TABLE ellery.clickstream_${year}_${month}_${day}_${version};
 DROP VIEW IF EXISTS ellery.throttled_requests_${year}_${month}_${day}_${version};
 DROP VIEW IF EXISTS ellery.relevant_requests_${year}_${month}_${day}_${version};

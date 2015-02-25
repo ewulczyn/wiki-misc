@@ -29,11 +29,11 @@ def throttle(requests):
 
   # one pageview per minute is certainly acceptible
   if num_requests == 1.0:
-    print '\t'.join(requests[0])
-  # 20 requests per minute is unreasonable
-  elif num_requests > 20.0:
-    return
-  # in between, compute the true rate
+    emit(requests)
+  # an empty referer gives too low entropy, we have to let it slide
+  elif len(requests[0][2]) < 2:
+    emit(requests)
+  # check rate rate
   else:
     try:
       start_second = float(requests[0][second_index]) 
@@ -48,11 +48,13 @@ def throttle(requests):
     rate = num_requests / request_interval
     # compute rate that it would take a human to generate that many views
     max_rate = num_requests / (num_requests + 0.1*num_requests**2)
-      
     if rate < max_rate:
-      for p in requests:
-        print '\t'.join(p)
+      emit(requests)
+      
 
+def emit(requests):
+  for r in requests:
+    print '\t'.join(r)
 
 def main():
   """
