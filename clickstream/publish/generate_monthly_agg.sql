@@ -1,19 +1,19 @@
 export JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk-amd64
 
 -- sqoop page, pagelink, redirect tables into HIVE
+hadoop fs -put sqoop.password /user/ellery/sqoop.password
 
-sqoop import                                                        \
+sqoop import -P                                                      \
   --connect jdbc:mysql://s1-analytics-slave.eqiad.wmnet/enwiki      \
   --verbose                                                         \
   --target-dir /tmp/$(mktemp -u -p '' -t ${USER}_sqoop_XXXXXX)      \
   --delete-target-dir                                               \
   --username research                                               \
-  --password XXXXXXXXXXXX                                           \
   --split-by a.page_id                                              \
   --hive-import                                                     \
   --hive-database ellery                                            \
   --create-hive-table                                               \
-  --hive-table en_page                                              \
+  --hive-table en_page                                       \
   --query '
 SELECT
   a.page_id AS page_id,
@@ -23,18 +23,17 @@ WHERE $CONDITIONS AND page_namespace = 0
 '                                          
 
 
-sqoop import                                                        \
+sqoop import -P                                                        \
   --connect jdbc:mysql://s1-analytics-slave.eqiad.wmnet/enwiki      \
   --verbose                                                         \
   --target-dir /tmp/$(mktemp -u -p '' -t ${USER}_sqoop_1XXXXX)      \
   --delete-target-dir                                               \
   --username research                                               \
-  --password XXXXXXXXXXXX                                           \
   --split-by b.rd_from                                              \
   --hive-import                                                     \
   --hive-database ellery                                            \
   --create-hive-table                                               \
-  --hive-table en_redirect                                          \
+  --hive-table en_redirect                                         \
   --query '
 SELECT
   b.rd_from AS rd_from,
@@ -43,13 +42,12 @@ FROM redirect b
 WHERE $CONDITIONS AND rd_namespace = 0
 '                 
 
-sqoop import                                                        \
+sqoop import -P                                                       \
   --connect jdbc:mysql://s1-analytics-slave.eqiad.wmnet/enwiki      \
   --verbose                                                         \
   --target-dir /tmp/$(mktemp -u -p '' -t ${USER}_sqoop_2XXXXX)      \
   --delete-target-dir                                               \
   --username research                                               \
-  --password XXXXXXXXXXXX                                           \
   --split-by a.pl_from                                              \
   --hive-import                                                     \
   --hive-database ellery                                            \
@@ -64,43 +62,58 @@ WHERE pl_namespace = 0
 AND pl_from_namespace = 0
 AND $CONDITIONS
 
--- create view of redirect table with ids -> titles           
+
+
+
+set year=2015;
+set month=2;
+set sqoop_date=feb_28;
+set clickstream_version = clickstream_v0_6;
+
+ALTER TABLE en_page RENAME TO en_page_${hiveconf:sqoop_date};
+ALTER TABLE en_redirect RENAME TO en_redirect_${hiveconf:sqoop_date};
+ALTER TABLE en_pagelinks RENAME TO en_pagelinks_${hiveconf:sqoop_date};
+
+
+-- create view of redirect table with ids -> titles   
+DROP VIEW IF EXISTS redirect;        
 CREATE VIEW redirect AS
 SELECT 
-en_page.page_title as r_from,
-en_redirect.rd_title as r_to
+en_page_${hiveconf:sqoop_date}.page_title as r_from,
+en_redirect_${hiveconf:sqoop_date}.rd_title as r_to
 FROM
-en_redirect INNER JOIN en_page
-ON en_redirect.rd_from = en_page.page_id;
+en_redirect_${hiveconf:sqoop_date} INNER JOIN en_page_${hiveconf:sqoop_date}
+ON en_redirect_${hiveconf:sqoop_date}.rd_from = en_page_${hiveconf:sqoop_date}.page_id;
 
--- create view of pagrlinks table with ids -> titles           
+-- create view of pagrlinks table with ids -> titles 
+DROP VIEW IF EXISTS pagelinks;       
 CREATE VIEW pagelinks AS
 SELECT
-en_page.page_title AS l_from,
-en_pagelinks.pl_title AS l_to
-FROM en_pagelinks INNER JOIN en_page
-ON en_pagelinks.pl_from = en_page.page_id;
+en_page_${hiveconf:sqoop_date}.page_title AS l_from,
+en_pagelinks_${hiveconf:sqoop_date}.pl_title AS l_to
+FROM en_pagelinks_${hiveconf:sqoop_date} INNER JOIN en_page_${hiveconf:sqoop_date}
+ON en_pagelinks_${hiveconf:sqoop_date}.pl_from = en_page_${hiveconf:sqoop_date}.page_id;
 
 
 -- aggregate daily clickstream 
+DROP VIEW IF EXISTS agg;
 CREATE VIEW agg AS
 SELECT prev, curr, SUM(n) as n
-FROM ellery.oozie_mc_v0_5
+FROM ellery.${hiveconf:clickstream_version}
 WHERE curr is NOT NULL
 AND prev is NOT NULL
 AND n is NOT NULL
-AND year = 2015
-AND month = 1
+AND year = ${hiveconf:year}
+AND month = ${hiveconf:month}
 GROUP BY curr, prev;
 
 
-
-
 -- resolve redirects
+DROP VIEW IF EXISTS agg_redirect_raw;
 CREATE VIEW agg_redirect_raw AS
 SELECT
 CASE
-    WHEN prev in ('other-wikipedia', 'other-google', 'other-yahoo', 'other-empty', 'other', 'other-facebook', 'other-twitter', 'other-bing', 'other-internal') THEN prev
+    WHEN prev in ('other-wikipedia', 'other-google', 'other-yahoo', 'other-empty', 'other-other', 'other-facebook', 'other-twitter', 'other-bing', 'other-internal') THEN prev
     WHEN redirect_prev.r_to IS NOT NULL THEN redirect_prev.r_to
     ELSE prev
 END AS prev,
@@ -136,6 +149,7 @@ ON (agg_redirect.prev = pagelinks.l_from AND agg_redirect.curr = pagelinks.l_to)
 
 
 -- mark prev, curr as pages
+DROP VIEW  IF EXISTS agg_id;
 CREATE VIEW agg_id AS
 SELECT
 prev_pages.page_id AS prev_id,
@@ -145,13 +159,13 @@ agg.prev AS prev,
 agg.curr AS curr,
 agg.is_link AS is_link
 FROM agg_links agg
-LEFT JOIN en_page prev_pages
+LEFT JOIN en_page_${hiveconf:sqoop_date} prev_pages
 ON (prev_pages.page_title = agg.prev)
-LEFT JOIN en_page curr_pages
+LEFT JOIN en_page_${hiveconf:sqoop_date} curr_pages
 ON (curr_pages.page_title = agg.curr);
 
---IF REDOING, REPLACE OTHER with  ADD OTHER-OTHER !!!!!!!!!!!!!!!!!!
--- filter down to legal pairs
+
+DROP VIEW IF EXISTS agg_filtered;
 CREATE VIEW agg_filtered AS
 SELECT prev_id, curr_id, n, prev, curr, 
 CASE
@@ -161,12 +175,13 @@ CASE
     ELSE 'other'
 END type
 FROM agg_id
-WHERE (prev_id IS NOT NULL OR prev in ('other-wikipedia', 'other-google', 'other-yahoo', 'other-empty', 'other', 'other-facebook', 'other-twitter', 'other-bing', 'other-internal'))
+WHERE (prev_id IS NOT NULL OR prev in ('other-wikipedia', 'other-google', 'other-yahoo', 'other-empty', 'other-other', 'other-facebook', 'other-twitter', 'other-bing', 'other-internal'))
 AND (curr_id IS NOT NULL OR is_link);
 
+set monthly_agg_table = agg_${hiveconf:clickstream_version}_${hiveconf:year}_${hiveconf:month};
 
-DROP TABLE IF EXISTS mc_jan;
-CREATE TABLE IF NOT EXISTS mc_jan (
+DROP TABLE IF EXISTS ${hiveconf:monthly_agg_table};
+CREATE TABLE IF NOT EXISTS ${hiveconf:monthly_agg_table} (
   prev_id INT,
   curr_id INT,
   n BIGINT,
@@ -177,10 +192,10 @@ CREATE TABLE IF NOT EXISTS mc_jan (
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t'
 STORED AS TEXTFILE;
 
-INSERT OVERWRITE TABLE mc_jan
+INSERT OVERWRITE TABLE ${hiveconf:monthly_agg_table}
 SELECT * FROM agg_filtered
 WHERE n >= 10;
 
-
+SELECT SUM(N), COUNT(*) FROM ${hiveconf:monthly_agg_table};
 
 

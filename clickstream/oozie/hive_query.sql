@@ -2,7 +2,9 @@ set hive.stats.autogather=false;
 USE ${database};
 
 -- UDFS and TRANSFORM functions
-ADD FILE hdfs:///user/ellery/clickstream/oozie/throttle.py;
+ADD FILE hdfs:///user/ellery/clickstream/oozie/throttle_ip_ua_ref.py;
+ADD FILE hdfs:///user/ellery/clickstream/oozie/throttle_ip_ua_path.py;
+
 ADD JAR hdfs:///wmf/refinery/current/artifacts/refinery-hive.jar;
 CREATE TEMPORARY FUNCTION parse_ua as 'org.wikimedia.analytics.refinery.hive.UAParserUDF';
 CREATE TEMPORARY FUNCTION is_crawler as 'org.wikimedia.analytics.refinery.hive.IsCrawlerUDF';
@@ -93,11 +95,48 @@ CREATE VIEW ellery.relevant_requests_${year}_${month}_${day}_${version} AS
     AND uri_path NOT LIKE '/wiki/Media:%';
 
 
+DROP VIEW IF EXISTS ellery.throttle_ip_ua_path_${year}_${month}_${day}_${version};
+CREATE VIEW ellery.throttle_ip_ua_path_${year}_${month}_${day}_${version}
+AS SELECT TRANSFORM(
+x.ip, 
+x.user_agent,
+x.uri_path,
+x.minute,
+x.second,
+x.referer)
+USING 'python throttle_ip_ua_path.py'
+AS 
+ip, 
+user_agent,
+uri_path,
+minute,
+second,
+referer
+FROM 
+    (SELECT
+        ip, 
+        user_agent,
+        uri_path,
+        minute,
+        second,
+        referer
+    FROM ellery.relevant_requests_${year}_${month}_${day}_${version}
+    DISTRIBUTE BY (
+        ip, 
+        user_agent,
+        uri_path,
+        minute
+        )
+    SORT BY ip, user_agent, uri_path, minute, second) x;
+
+
+
+
 -- create a view corresponding to relvant requests where requests from crawlers are exluded
 -- throttle.py does this by rate limiting requests from the same client with the same referer 
-DROP VIEW IF EXISTS ellery.throttled_requests_${year}_${month}_${day}_${version};
+DROP VIEW IF EXISTS ellery.throttle_ip_ua_ref_${year}_${month}_${day}_${version};
 
-CREATE VIEW ellery.throttled_requests_${year}_${month}_${day}_${version}
+CREATE VIEW ellery.throttle_ip_ua_ref_${year}_${month}_${day}_${version}
 AS SELECT TRANSFORM(
 x.ip, 
 x.user_agent, 
@@ -105,7 +144,7 @@ x.referer,
 x.minute,
 x.second, 
 x.uri_path)
-USING 'python throttle.py'
+USING 'python throttle_ip_ua_ref.py'
 AS 
 ip, 
 user_agent, 
@@ -121,7 +160,7 @@ FROM
         minute,
         second, 
         uri_path
-    FROM ellery.relevant_requests_${year}_${month}_${day}_${version}
+    FROM ellery.throttle_ip_ua_path_${year}_${month}_${day}_${version}
     DISTRIBUTE BY (
         ip, 
         user_agent, 
@@ -201,7 +240,7 @@ FROM (
         WHEN parse_url(referer,'HOST') LIKE '%bing.%' THEN 'other-bing'
         ELSE 'other-other'
     END as prev
-    FROM  ellery.throttled_requests_${year}_${month}_${day}_${version}
+    FROM  ellery.throttle_ip_ua_ref_${year}_${month}_${day}_${version}
 ) a
 WHERE curr != prev
 GROUP BY curr, prev;
@@ -213,6 +252,8 @@ SELECT * FROM ellery.clickstream_${year}_${month}_${day}_${version};
 
 -- drop temporary, day specific views and tables
 DROP TABLE ellery.clickstream_${year}_${month}_${day}_${version};
-DROP VIEW IF EXISTS ellery.throttled_requests_${year}_${month}_${day}_${version};
+DROP VIEW IF EXISTS ellery.throttle_ip_ua_path_${year}_${month}_${day}_${version};
+DROP VIEW IF EXISTS ellery.throttle_ip_ua_ref_${year}_${month}_${day}_${version};
+
 DROP VIEW IF EXISTS ellery.relevant_requests_${year}_${month}_${day}_${version};
 

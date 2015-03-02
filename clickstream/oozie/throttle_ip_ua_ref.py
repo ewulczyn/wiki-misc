@@ -10,7 +10,7 @@ that it only operates on one minute of request at a time.
 
 Input:
 Records of the schema: [ip, user_agent, referer, minute, second, uri_path], 
-sorted by sorted by (ip, user_agent, referer, minute, second) 
+sorted by (ip, user_agent, referer, minute, second) 
 
 When using this script as a hive transform function be sure to
 distribute by (ip, user_agent, referer, minute) and sort by
@@ -30,9 +30,9 @@ def throttle(requests):
   # one pageview per minute is certainly acceptible
   if num_requests == 1.0:
     emit(requests)
-  # an empty referer gives too low entropy, we have to let it slide
-  elif len(requests[0][2]) < 2:
-    emit(requests)
+  # an empty referer may give too low entropy
+  #elif len(requests[0][2]) < 2:
+  #  emit(requests)
   # check rate rate
   else:
     try:
@@ -59,7 +59,7 @@ def emit(requests):
 def main():
   """
   Send each set of records with the same
-  (ip, user_agent, referer, minute) fields to
+  (ip, user_agent, uri_path, minute) fields to
   throttle function to determine if the
   requests should be dropped.
   """

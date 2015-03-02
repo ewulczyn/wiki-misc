@@ -1,6 +1,24 @@
-hadoop fs -copyToLocal /user/hive/warehouse/ellery.db/mc_jan mc_jan
-cat mc_jan/* > 2015_01_clickstream_funny_null.tsv
-sed 's/\\N//g' 2015_01_clickstream_funny_null.tsv > 2015_01_clickstream.tsv
-gzip 2015_01_clickstream.tsv
-scp stat1002.eqiad.wmnet:2015_01_clickstream.tsv.gz .
-scp 2015_01_clickstream.tsv.gz stat1003.eqiad.wmnet:/srv/public-datasets/enwiki/clickstream/2015_01_clickstream.tsv.gz
+year=2015
+month=02
+clickstream_version=clickstream_v0_6
+
+
+AGG_TABLE=agg_${clickstream_version}_${year}_${month}
+FUNNY_NULL_TSV=${year}_${month}_clickstream_funny_null.tsv
+FINAL_TSV=${year}_${month}_clickstream.tsv
+
+
+hadoop fs -copyToLocal /user/hive/warehouse/ellery.db/${AGG_TABLE} ${AGG_TABLE}
+cat header.txt ${AGG_TABLE}/* > ${FUNNY_NULL_TSV}
+sed 's/\\N//g' ${FUNNY_NULL_TSV} > ${FINAL_TSV}
+gzip ${FINAL_TSV}
+
+
+scp stat1002.eqiad.wmnet:${FINAL_TSV}.gz /Users/ellerywulczyn/wmf/clickstream/data/${FINAL_TSV}.gz
+scp ${FINAL_TSV}.gz stat1003.eqiad.wmnet:/srv/public-datasets/enwiki/clickstream/${FINAL_TSV}.gz
+
+
+rm -r ${AGG_TABLE}
+rm ${FUNNY_NULL_TSV}
+rm ${FINAL_TSV}
+rm ${FINAL_TSV}.gz

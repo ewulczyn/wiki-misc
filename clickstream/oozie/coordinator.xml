@@ -2,9 +2,9 @@
 <coordinator-app end="${stop_time}" frequency="${coord:days(1)}" name="${task}_coordinator_${version}" start="${start_time}" timezone="Universal" xmlns="uri:oozie:coordinator:0.4">
     <controls>
         <timeout>5760</timeout>
-        <concurrency>3</concurrency>
+        <concurrency>2</concurrency>
         <execution>FIFO</execution>
-        <throttle>3</throttle>
+        <throttle>2</throttle>
     </controls>
     <datasets>
         <dataset frequency="${coord:hours(1)}" initial-instance="${start_time}" name="webrequest" timezone="Universal">

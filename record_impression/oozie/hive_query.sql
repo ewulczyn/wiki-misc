@@ -3,6 +3,7 @@ USE ${database};
 
 ADD JAR hdfs:///wmf/refinery/current/artifacts/refinery-hive.jar;
 CREATE TEMPORARY FUNCTION parse_ua as 'org.wikimedia.analytics.refinery.hive.UAParserUDF';
+CREATE TEMPORARY FUNCTION is_crawler as 'org.wikimedia.analytics.refinery.hive.IsCrawlerUDF';
 
 
 CREATE TABLE IF NOT EXISTS ellery.oozie_impressions_${version} (
@@ -76,8 +77,10 @@ FROM (
       PARSE_URL(CONCAT('http://bla.org/woo/', uri_query), 'QUERY', 'bucket') as bucket,
       CASE 
         WHEN parse_ua(user_agent)['device_family'] = 'Spider' THEN 1
+        WHEN is_crawler(user_agent) THEN 1
         WHEN parse_ua(user_agent)['device_family'] != 'Other' THEN 0
-        WHEN LOWER(user_agent) RLIKE 'bot|fetch|spider|slurp|crawler|sleuth' THEN 1
+        WHEN user_agent RLIKE 'HTTrack|AppleDictionaryService|Twisted PageGetter|Akamai SureRoute|WikiWand|WordPress' THEN 1
+        WHEN LOWER(user_agent) RLIKE 'bot|fetch|spider|slurp|crawler|sleuth|scraper|http' THEN 1
         WHEN LOWER(user_agent) RLIKE 'jakarta commons|tencenttraveler|genieo/|squider|gomezagent|quicklook|ning/|metauri api|daum|butterfly|guzzle|wada.vn|catchpoint' THEN 1
         WHEN LOWER(user_agent) RLIKE 'facebookexternalhit|pinterest|vkshare|flipboardproxy|twilioproxy' THEN 1
         WHEN LOWER(user_agent) RLIKE 'developers.google.com/+/web/snippet/|google web preview|bingpreview|sendgrid|secret_pin_test_agent|jumio callback clienti|paypal' THEN 1
@@ -87,12 +90,15 @@ FROM (
 
     FROM wmf.webrequest 
     
-    WHERE uri_path = '/wiki/Special:RecordImpression'
-      AND year = ${year}
+    WHERE year = ${year}
       AND month = ${month}
       AND day = ${day}
       AND hour = ${hour}
       AND ((webrequest_source = 'text') OR (webrequest_source = 'mobile'))
+      AND uri_host = 'meta.wikimedia.org'
+      AND uri_path = '/w/index.php'
+      AND PARSE_URL(CONCAT('http://bla.org/woo/', uri_query), 'QUERY', 'title') IS NOT NULL
+      AND PARSE_URL(CONCAT('http://bla.org/woo/', uri_query), 'QUERY', 'title') = 'Special:RecordImpression'
 ) a
 GROUP BY
   a.anonymous,
