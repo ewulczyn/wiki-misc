@@ -47,7 +47,7 @@ CREATE VIEW ellery.relevant_requests_${year}_${month}_${day}_${version} AS
     -- remove bots/spiders that signal their identity through their user-agent
     AND parse_ua(user_agent)['device_family'] != 'Spider'
     AND is_crawler(user_agent) = 0
-    AND user_agent NOT RLIKE 'bot|Bot|spider|Spider|crawler|Crawler|http|Scraper|scraper'
+    AND LOWER(user_agent) NOT RLIKE 'bot|spider|crawler|scraper|http'
     AND user_agent NOT RLIKE 'HTTrack|AppleDictionaryService|Twisted PageGetter|Akamai SureRoute|WikiWand|WordPress|MediaWiki'
 
 
