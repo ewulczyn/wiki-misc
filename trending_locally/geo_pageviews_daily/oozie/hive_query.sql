@@ -4,10 +4,8 @@ USE ${database};
 
 ADD JAR hdfs:///wmf/refinery/current/artifacts/refinery-hive.jar;
 CREATE TEMPORARY FUNCTION parse_ua as 'org.wikimedia.analytics.refinery.hive.UAParserUDF';
-CREATE TEMPORARY FUNCTION geocode as 'org.wikimedia.analytics.refinery.hive.GeocodedCountryUDF';
 CREATE TEMPORARY FUNCTION is_crawler as 'org.wikimedia.analytics.refinery.hive.IsCrawlerUDF';
 CREATE TEMPORARY FUNCTION get_access_method as 'org.wikimedia.analytics.refinery.hive.GetAccessMethodUDF';
-CREATE TEMPORARY FUNCTION  resolve_ip as 'org.wikimedia.analytics.refinery.hive.ClientIpUDF';
 
 CREATE TEMPORARY MACRO get_project(uri_host STRING)
     reverse(split(reverse(uri_host), '\\.')[1]);
@@ -36,16 +34,17 @@ CREATE TABLE ellery.${task}_${year}_${month}_${day} (
 );
 
 INSERT INTO TABLE ellery.${task}_${year}_${month}_${day}
-  SELECT project, variant, page_title, country, count(*) as n FROM
+  SELECT project, variant, page_title, country, 64*count(*) as n FROM
   (SELECT
     get_project(uri_host) as project,
     get_variant(uri_host) as variant,
     REGEXP_EXTRACT(reflect("java.net.URLDecoder", "decode", uri_path), '^/[^/]*/(.*)', 1) as page_title,
-    geocode(resolve_ip(ip, x_forwarded_for)) as country
+    geocoded_data['country'] as country
     FROM wmf.webrequest TABLESAMPLE(BUCKET 1 OUT OF 64 ON rand())
     WHERE year = ${year}
     AND month = ${month}
     AND day = ${day}
+    AND webrequest_source in ('text', 'mobile')
     AND uri_path NOT RLIKE '^/w/'
     AND is_pageview
     AND is_crawler(user_agent) = 0

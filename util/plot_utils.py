@@ -6,11 +6,12 @@ from plotly.graph_objs import *
 py.sign_in("ewulczyn", "y2a7n75kl8")
 
 
-def plot_df(d, ylabel = '', xlabel = '', title = '', interactive = False):
+def plot_df(d, ylabel = '', xlabel = '', title = '', interactive = False, rotate = False):
     fig = plt.figure(figsize=(10, 4), dpi=80)
     for c in d.columns:
         plt.plot(d.index, d[c], label = c)
-        #plt.xticks(d.index, d.index, rotation='vertical')
+        if rotate:
+            plt.xticks(d.index, d.index, rotation='vertical')
     plt.ylabel(ylabel)
     plt.xlabel(xlabel)
     plt.title(title)

@@ -75,7 +75,7 @@ def query_stat_ssh(query, file_name):
         return d
 
 
-def get_time_limits(start = None, stop = None, month_delta = 3):
+def get_time_limits(start = None, stop = None, month_delta = 36):
     """
     Expands start and stop dts into detailed dt parameter dict
     """
