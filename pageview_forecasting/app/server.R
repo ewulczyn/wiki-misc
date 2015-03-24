@@ -1,6 +1,7 @@
 library(shiny)
 library(forecast)
 library(ggplot2)
+library(scales)
 
 d = read.csv("data/cube.csv", check.names = F)
 d = d[2:(nrow(d)-1), ]
