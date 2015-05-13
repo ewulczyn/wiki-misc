@@ -2,10 +2,13 @@ library(shiny)
 library(forecast)
 library(ggplot2)
 library(scales)
+library(data.table)
 
-d = read.csv("data/cube.csv", check.names = F)
+d = fread('data/cube5.csv', sep=",", header=T)
 d = d[2:(nrow(d)-1), ]
 dates = seq(as.Date(d$YearMonth[1]), length = (nrow(d) + 12), by = "month")
+d[['YearMonth']] = NULL
+d <- sapply(d, as.numeric)
 
 shinyServer(function(input, output) {
   
@@ -18,9 +21,10 @@ shinyServer(function(input, output) {
     method <- input$method
     y_name = paste(input$project,input$access, input$country, sep='/')
     print(y_name)
-    y = d[[y_name]]
+    y = d[,y_name]
     dlm = data.frame(x = dates[1:nrow(d)] ,  y = y)
     past <<- dlm
+    
     
     if(method == 'arima'){
       fit <- auto.arima(y)
@@ -32,7 +36,7 @@ shinyServer(function(input, output) {
       
       p <- ggplot(pred, aes(x=YearMonth, y=Point.Forecast)) +
         geom_ribbon(aes(ymin=Lo.95, ymax=Hi.95), alpha=0.1) + geom_line() + 
-        geom_line(data= dlm, aes(x=x, y = fitted ), colour="orange") +
+        #geom_line(data= dlm, aes(x=x, y = fitted ), colour="orange") +
         geom_line(data= pred, aes(x = YearMonth, y = Point.Forecast ), colour="orange") +
         geom_line(data= dlm, aes(x=x, y = y)) +
         geom_point(data= dlm, aes(x=x, y = y)) +
@@ -64,14 +68,18 @@ shinyServer(function(input, output) {
   })
   
   output$download_forecast <- downloadHandler(
-    filename = paste(input$method, input$project,input$access, input$country, 'forecast.csv', sep='.'),
+    filename = function() {
+      paste(input$method, input$project,input$access, input$country, 'forecast.csv', sep='.')
+    },
     content = function(file){
       write.table(predictions, file, row.names = FALSE, sep = ",", quote = TRUE)
     }
   )
   
   output$download_past <- downloadHandler(
-    filename = paste(input$project, input$access, input$country, 'past.csv', sep='.'),
+    filename = function() {
+      paste(input$project, input$access, input$country, 'past.csv', sep='.')
+    },
     content = function(file){
       write.table(past, file, row.names = FALSE, sep = ",", quote = TRUE)
     }

@@ -1,8 +1,11 @@
 library(shiny)
 library(shinythemes)
+library(data.table)
 
 # Derive set of options from header
-columns = colnames(read.csv("data/cube.csv", check.names = F, row.names =1))
+d = fread('data/cube5.csv', sep=",", header=T)
+d[['month']] = NULL
+columns = colnames(d)
 access_methods = c()
 projects = c()
 countries = c()

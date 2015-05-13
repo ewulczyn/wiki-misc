@@ -3,12 +3,13 @@ export JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk-amd64
 -- sqoop page, pagelink, redirect tables into HIVE
 hadoop fs -put sqoop.password /user/ellery/sqoop.password
 
-sqoop import -P                                                      \
+sqoop import                                                     \
   --connect jdbc:mysql://s1-analytics-slave.eqiad.wmnet/enwiki      \
   --verbose                                                         \
   --target-dir /tmp/$(mktemp -u -p '' -t ${USER}_sqoop_XXXXXX)      \
   --delete-target-dir                                               \
-  --username research                                               \
+  --username research   
+  --password-file /user/ellery/sqoop.password                                            \
   --split-by a.page_id                                              \
   --hive-import                                                     \
   --hive-database ellery                                            \

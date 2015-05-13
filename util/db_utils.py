@@ -1,5 +1,5 @@
 ##### UTILITY FUNCTIONS
-import MySQLdb
+import pymysql
 import pandas as pd
 import os
 from datetime import datetime
@@ -7,12 +7,12 @@ import dateutil.parser
 import dateutil.relativedelta
 import traceback
 import sys
-
+from dateutil import relativedelta
 
 
 def query_through_tunnel(port,cnf_path, query, params):
-    conn = MySQLdb.connect(host="127.0.0.1", port=port, read_default_file=cnf_path)
-    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+    conn = pymysql.connect(host="127.0.0.1", port=port, read_default_file=cnf_path)
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
     cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()
@@ -53,9 +53,9 @@ def query_lutetium_ssh(query, file_name):
         os.system('rm ' + file_name)
         return d
     except:
-        print traceback.format_exc() 
+        print(traceback.format_exc())
         os.system('rm ' + file_name)
-        print "QUERY FAILED"
+        print("QUERY FAILED")
     
 
 
@@ -87,7 +87,7 @@ def get_time_limits(start = None, stop = None, month_delta = 36):
         params['start_dt'] = dateutil.parser.parse(start)
     else:
         # default to 3 month ago
-        params['start_dt'] = (datetime.utcnow() - dateutil.relativedelta.relativedelta(months=month_delta))
+        params['start_dt'] = (datetime.utcnow() - relativedelta.relativedelta(months=month_delta))
 
     if stop:
         params['stop_dt'] = dateutil.parser.parse(stop)
