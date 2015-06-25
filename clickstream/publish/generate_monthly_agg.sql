@@ -8,7 +8,7 @@ sqoop import                                                     \
   --verbose                                                         \
   --target-dir /tmp/$(mktemp -u -p '' -t ${USER}_sqoop_XXXXXX)      \
   --delete-target-dir                                               \
-  --username research   
+  --username research   \
   --password-file /user/ellery/sqoop.password                                            \
   --split-by a.page_id                                              \
   --hive-import                                                     \
@@ -24,12 +24,13 @@ WHERE $CONDITIONS AND page_namespace = 0
 '                                          
 
 
-sqoop import -P                                                        \
+sqoop import                                                        \
   --connect jdbc:mysql://s1-analytics-slave.eqiad.wmnet/enwiki      \
   --verbose                                                         \
   --target-dir /tmp/$(mktemp -u -p '' -t ${USER}_sqoop_1XXXXX)      \
   --delete-target-dir                                               \
   --username research                                               \
+  --password-file /user/ellery/sqoop.password                                            \
   --split-by b.rd_from                                              \
   --hive-import                                                     \
   --hive-database ellery                                            \
@@ -43,12 +44,13 @@ FROM redirect b
 WHERE $CONDITIONS AND rd_namespace = 0
 '                 
 
-sqoop import -P                                                       \
+sqoop import                                                  \
   --connect jdbc:mysql://s1-analytics-slave.eqiad.wmnet/enwiki      \
   --verbose                                                         \
   --target-dir /tmp/$(mktemp -u -p '' -t ${USER}_sqoop_2XXXXX)      \
   --delete-target-dir                                               \
   --username research                                               \
+  --password-file /user/ellery/sqoop.password                                            \
   --split-by a.pl_from                                              \
   --hive-import                                                     \
   --hive-database ellery                                            \
@@ -67,8 +69,8 @@ AND $CONDITIONS
 
 
 set year=2015;
-set month=2;
-set sqoop_date=feb_28;
+set month=4;
+set sqoop_date=jun_19;
 set clickstream_version = clickstream_v0_6;
 
 ALTER TABLE en_page RENAME TO en_page_${hiveconf:sqoop_date};
