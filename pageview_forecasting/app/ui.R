@@ -3,7 +3,7 @@ library(shinythemes)
 library(data.table)
 
 # Derive set of options from header
-d = fread('data/cube5.csv', sep=",", header=T)
+d = fread('data/cube.csv', sep=",", header=T)
 d[['month']] = NULL
 columns = colnames(d)
 access_methods = c()
@@ -16,6 +16,8 @@ for(c in columns) {
   access_methods = append(access_methods, elems[[1]][2])
   countries = append(countries, elems[[1]][3])
 }
+
+access_methods = append(access_methods, 'desktop + mobile')
 
 
 

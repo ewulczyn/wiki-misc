@@ -4,7 +4,7 @@ library(ggplot2)
 library(scales)
 library(data.table)
 
-d = fread('data/cube5.csv', sep=",", header=T)
+d = fread('data/cube.csv', sep=",", header=T)
 d = d[2:(nrow(d)-1), ]
 dates = seq(as.Date(d$YearMonth[1]), length = (nrow(d) + 12), by = "month")
 d[['YearMonth']] = NULL
@@ -19,9 +19,20 @@ shinyServer(function(input, output) {
     
     months <-  input$months
     method <- input$method
-    y_name = paste(input$project,input$access, input$country, sep='/')
-    print(y_name)
-    y = d[,y_name]
+    
+    
+    
+    if (input$access == 'desktop + mobile'){
+      y_name_1 = paste(input$project,'desktop', input$country, sep='/')
+      y_name_2 = paste(input$project,'mobile web', input$country, sep='/')
+      y = d[,y_name_1] + d[,y_name_2]
+      
+    }else{
+      y_name = paste(input$project,input$access, input$country, sep='/')
+      y = d[,y_name]
+    }
+    
+    
     dlm = data.frame(x = dates[1:nrow(d)] ,  y = y)
     past <<- dlm
     
@@ -41,7 +52,8 @@ shinyServer(function(input, output) {
         geom_line(data= dlm, aes(x=x, y = y)) +
         geom_point(data= dlm, aes(x=x, y = y)) +
         xlab("") +
-        ylab("Pageviews per Month") 
+        ylab("Pageviews per Month") +
+        expand_limits(y=0)
       print(p)
       pred = pred[, c('YearMonth', 'Point.Forecast', 'Lo.95', 'Hi.95')]  
       colnames(pred) <- c('YearMonth', 'fit', 'lwr', 'upr')
@@ -52,7 +64,8 @@ shinyServer(function(input, output) {
         stat_smooth(method="lm",fullrange=TRUE, colour = 'orange')+
         scale_x_date(breaks = "3 month",  labels=date_format("%b-%Y"), limits = c(dates[1], dates[(nrow(d) + months)]) ) +
         xlab("") +
-        ylab("Pageviews per Month") 
+        ylab("Pageviews per Month") +
+        expand_limits(y=0)
       
       fit = lm(y ~ x, dlm) 
       newdata = data.frame(x = dates[(nrow(d)+1):(nrow(d)+months)])
