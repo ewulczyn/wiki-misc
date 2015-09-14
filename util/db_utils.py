@@ -58,14 +58,39 @@ def query_lutetium_ssh(query, file_name):
         print("QUERY FAILED")
     
 
-
-    
-def query_hive_ssh(query, file_name):
+  
+def query_hive_ssh(query, file_name, priority = False):
+    if priority:
+        query = "SET mapreduce.job.queuename=priority;" + query
     cmd = """ssh stat1002.eqiad.wmnet "hive -e \\" """ +query+ """ \\" "> """ + file_name
     os.system(cmd)
     d = pd.read_csv(file_name,  sep='\t')
     os.system('rm ' + file_name)
     return d
+
+
+def execute_hive_expression(query, priority = False):
+    if priority:
+        query = "SET mapreduce.job.queuename=priority;" + query
+    cmd = """ssh stat1002.eqiad.wmnet "hive -e \\" """ +query+ """ \\" "> """ + 'hive_exec_dummy'
+    os.system(cmd)
+    
+
+def get_hive_timespan(start, stop):
+    start = dateutil.parser.parse(start)
+    stop = dateutil.parser.parse(stop)
+    days = []
+    while start <= stop:
+        parts = []
+        parts.append('year=%d' % start.year)
+        parts.append('month=%d' % start.month)
+        parts.append('day=%d' % start.day)
+        days.append(' AND '.join(parts))
+        
+        start += relativedelta.relativedelta(days=1)
+    
+    condition = '((' + (') OR (').join(days) + '))' 
+    return condition
 
 def query_stat_ssh(query, file_name):
         cmd = """ssh stat1002.eqiad.wmnet "mysql --defaults-file=/etc/mysql/conf.d/analytics-research-client.cnf -h analytics-store.eqiad.wmnet -u research -e \\" """ +query+ """ \\" --socket  /tmp/mysql.sock  "> """+ file_name
