@@ -25,8 +25,11 @@ def mysql_to_pandas(dicts):
         for k in d.keys():
             if k not in dmaster:
                 dmaster[k] = []
-            
-            dmaster[k].append(d[k]) 
+
+            elem = d[k]
+            if isinstance(elem, bytes):
+                elem  = elem.decode('utf8')
+            dmaster[k].append(elem) 
     return pd.DataFrame(dmaster)
 
 

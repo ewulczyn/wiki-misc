@@ -4,6 +4,7 @@ from db_utils import get_time_limits
 import dateutil.parser
 from dateutil import relativedelta
 from db_utils import query_hive_ssh, execute_hive_expression, get_hive_timespan
+import copy
 
 
 """
@@ -285,3 +286,27 @@ class PVSpanComparison:
         """   
 
         execute_hive_expression(query % params)
+
+
+def check_normalization(pvsc, article):
+    params = copy.copy(pvsc.params)
+    params['article'] = article
+    query = """
+    SELECT *
+    FROM %(db)s.%(span_table)s
+    WHERE en_page_title = '%(article)s'
+    """
+    df = query_hive_ssh(query % params, 'get_PVSpanComparison_df')
+    df.columns = [c.split('.')[1] for c in df.columns]
+    df.sort('normalized_wdc_view_proportion_delta', inplace  = True, ascending = 0)
+    return df
+
+
+
+
+
+
+
+
+
+        

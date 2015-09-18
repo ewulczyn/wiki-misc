@@ -1,12 +1,10 @@
-library(shiny)
 library(forecast)
 library(ggplot2)
 library(scales)
-library(data.table)
 
 d = fread('data/cube.csv', sep=",", header=T)
 d = d[2:(nrow(d)-1), ]
-dates = seq(as.Date(d$YearMonth[1]), length = (nrow(d) + 12), by = "month")
+dates = seq(as.Date(d$YearMonth[1]), length = (nrow(d) + 36), by = "month")
 d[['YearMonth']] = NULL
 d <- sapply(d, as.numeric)
 
@@ -25,10 +23,23 @@ shinyServer(function(input, output) {
     if (input$access == 'desktop + mobile'){
       y_name_1 = paste(input$project,'desktop', input$country, sep='/')
       y_name_2 = paste(input$project,'mobile web', input$country, sep='/')
+      
+      if(!(y_name_1 %in% colnames(d)) || !(y_name_2 %in% colnames(d)))
+      {
+        stop('Sorry, there is no pageview forecast for this combination of inputs')
+      }
+      
+      
       y = d[,y_name_1] + d[,y_name_2]
       
     }else{
       y_name = paste(input$project,input$access, input$country, sep='/')
+      
+      if(!(y_name %in% colnames(d)))
+      {
+        stop('Sorry, there is no pageview forecast for this combination of inputs')
+      }
+      
       y = d[,y_name]
     }
     
@@ -38,7 +49,8 @@ shinyServer(function(input, output) {
     
     
     if(method == 'arima'){
-      fit <- auto.arima(y)
+      y = ts(y, frequency = 12, start = c(2013, 5))
+      fit <- auto.arima(y, D=1)
       pred = forecast(fit, months)
       fitted_values = fitted(fit)
       dlm$fitted = fitted_values

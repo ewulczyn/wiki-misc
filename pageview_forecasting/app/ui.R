@@ -1,6 +1,4 @@
-library(shiny)
 library(shinythemes)
-library(data.table)
 
 # Derive set of options from header
 d = fread('data/cube.csv', sep=",", header=T)
@@ -11,13 +9,17 @@ projects = c()
 countries = c()
 
 for(c in columns) {
-  elems = strsplit(c, '/')
-  projects = append(projects, elems[[1]][1])
-  access_methods = append(access_methods, elems[[1]][2])
-  countries = append(countries, elems[[1]][3])
+  elems = strsplit(c, '/')[[1]]
+  if (length(elems) == 3) {
+    projects = append(projects, elems[1])
+    access_methods = append(access_methods, elems[2])
+    countries = append(countries, elems[3])
+  }
 }
 
 access_methods = append(access_methods, 'desktop + mobile')
+countries = sort(countries)
+projects = sort(projects)
 
 
 
@@ -27,25 +29,25 @@ shinyUI(fluidPage(
   theme = shinytheme("cosmo"),
   
   # Application title
-  titlePanel("Pageview Forecasting"),
+  titlePanel("Wikipedia Pageview Forecasting"),
   
   # Sidebar with a slider input for the number of bins
   sidebarLayout(
     
     sidebarPanel(
       
-      radioButtons("method", "Forcasting Method:",
-                   c("Linear" = "linear", "ARIMA" = "arima")),
+      radioButtons("method", "Forecasting Method:",
+                   c( "ARIMA" = "arima", "Linear Regression" = "linear")),
       
       sliderInput("months",
                   "Number of Months:",
                   min = 1,
-                  max = 12,
-                  value = 6),
+                  max = 36,
+                  value = 12),
       
-      selectInput("access", label = "Access", 
+      selectInput("access", label = "Access Method", 
                   choices = unique(access_methods),
-                  selected = 'desktop'),
+                  selected = 'desktop + mobile'),
       
       
       selectInput("country", label = "Country", 
@@ -58,7 +60,13 @@ shinyUI(fluidPage(
       
       downloadButton("download_forecast", "Download Forecast"),
       
-      downloadButton("download_past", "Download Past")
+      downloadButton("download_past", "Download Past"),
+      
+      tags$div( HTML("<strong> About this data</strong>")),
+      
+      tags$div(
+          HTML('Data for this application comes from the <a href = "https://wikitech.wikimedia.org/wiki/Analytics/Data/Projectview_hourly"> projectview_hourly table</a> maintained by the Wikimedia analytics team.' )
+      )
         
     ),
     
