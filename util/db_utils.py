@@ -61,14 +61,14 @@ def query_lutetium_ssh(query, file_name):
         print("QUERY FAILED")
     
 
-  
-def query_hive_ssh(query, file_name, priority = False):
+def query_hive_ssh(query, file_name, priority = False, delete = True):
     if priority:
         query = "SET mapreduce.job.queuename=priority;" + query
     cmd = """ssh stat1002.eqiad.wmnet "hive -e \\" """ +query+ """ \\" "> """ + file_name
     os.system(cmd)
     d = pd.read_csv(file_name,  sep='\t')
-    os.system('rm ' + file_name)
+    if delete:
+        os.system('rm ' + file_name)
     return d
 
 
@@ -79,7 +79,7 @@ def execute_hive_expression(query, priority = False):
     os.system(cmd)
     
 
-def get_hive_timespan(start, stop):
+def get_hive_timespan(start, stop, hour = False):
     start = dateutil.parser.parse(start)
     stop = dateutil.parser.parse(stop)
     days = []
@@ -88,9 +88,15 @@ def get_hive_timespan(start, stop):
         parts.append('year=%d' % start.year)
         parts.append('month=%d' % start.month)
         parts.append('day=%d' % start.day)
+        if hour:
+            parts.append('hour=%d' % start.hour)
+            start += relativedelta.relativedelta(hours=1)
+        else:
+            start += relativedelta.relativedelta(days=1)
         days.append(' AND '.join(parts))
         
-        start += relativedelta.relativedelta(days=1)
+
+        
     
     condition = '((' + (') OR (').join(days) + '))' 
     return condition

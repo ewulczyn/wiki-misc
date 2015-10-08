@@ -2,8 +2,8 @@
 <coordinator-app end="${stop_time}" frequency="${coord:hours(1)}" name="${task}_coordinator_${version}" start="${start_time}" timezone="Universal" xmlns="uri:oozie:coordinator:0.4">
     <controls>
         <timeout>600</timeout>
-        <concurrency>1</concurrency>
-        <execution>LIFO</execution>
+        <concurrency>2</concurrency>
+        <execution>FIFO</execution>
         <throttle>2</throttle>
     </controls>
     <datasets>
