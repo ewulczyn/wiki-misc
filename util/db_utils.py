@@ -4,10 +4,9 @@ import pandas as pd
 import os
 from datetime import datetime
 import dateutil.parser
-import dateutil.relativedelta
+from dateutil import relativedelta
 import traceback
 import sys
-from dateutil import relativedelta
 
 
 def query_through_tunnel(port,cnf_path, query, params):
@@ -94,9 +93,7 @@ def get_hive_timespan(start, stop, hour = False):
         else:
             start += relativedelta.relativedelta(days=1)
         days.append(' AND '.join(parts))
-        
 
-        
     
     condition = '((' + (') OR (').join(days) + '))' 
     return condition

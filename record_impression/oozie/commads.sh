@@ -1,6 +1,12 @@
 ssh -v bast1001.wikimedia.org
 
 
+oozie job -info 
+
+oozie jobs -jobtype coordinator -filter status=RUNNING
+oozie job -kill 
+
+
 rsync -r ~/wmf/record_impression/oozie/ stat1002.eqiad.wmnet:~/wmf/record_impression/oozie
 
 
