@@ -58,6 +58,19 @@ def query_lutetium_ssh(query, file_name):
         print(traceback.format_exc())
         os.system('rm ' + file_name)
         print("QUERY FAILED")
+
+
+def query_lutetium_robust(query, params):
+    # if the client does not have mysqldb, this wont work
+    try:
+        return query_lutetium(query, params)
+    # so use ssh to query. This is not thread safe and absolutely rediculous
+    except:
+        print ("fetching data via ssh")
+
+        query = query % params
+        file_name = str(hashlib.md5(query.encode()).hexdigest())
+        return query_lutetium_ssh(query, file_name)
     
 
 def query_hive_ssh(query, file_name, priority = False, delete = True):
@@ -78,6 +91,17 @@ def execute_hive_expression(query, priority = False):
     os.system(cmd)
     
 
+
+
+def query_stat_ssh(query, file_name):
+    cmd = """ssh stat1002.eqiad.wmnet "mysql --defaults-file=/etc/mysql/conf.d/analytics-research-client.cnf -h analytics-store.eqiad.wmnet -u research -e \\" """ +query+ """ \\" --socket  /tmp/mysql.sock  "> """+ file_name
+    os.system(cmd)
+    d = pd.read_csv(file_name,  sep='\t')
+    os.system('rm ' + file_name)
+    return d
+
+
+
 def get_hive_timespan(start, stop, hour = False):
     start = dateutil.parser.parse(start)
     stop = dateutil.parser.parse(stop)
@@ -97,13 +121,6 @@ def get_hive_timespan(start, stop, hour = False):
     
     condition = '((' + (') OR (').join(days) + '))' 
     return condition
-
-def query_stat_ssh(query, file_name):
-        cmd = """ssh stat1002.eqiad.wmnet "mysql --defaults-file=/etc/mysql/conf.d/analytics-research-client.cnf -h analytics-store.eqiad.wmnet -u research -e \\" """ +query+ """ \\" --socket  /tmp/mysql.sock  "> """+ file_name
-        os.system(cmd)
-        d = pd.read_csv(file_name,  sep='\t')
-        os.system('rm ' + file_name)
-        return d
 
 
 def get_time_limits(start = None, stop = None, month_delta = 36):

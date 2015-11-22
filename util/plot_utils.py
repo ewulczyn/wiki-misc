@@ -1,11 +1,5 @@
 import matplotlib
 import matplotlib.pyplot as plt
-import prettyplotlib as ppl
-import plotly.plotly as py
-import plotly.tools as tls
-from plotly.graph_objs import *
-py.sign_in("ewulczyn", "y2a7n75kl8")
-
 
 def plot_df(d, ylabel = '', xlabel = '', title = '', interactive = False, rotate = False):
     fig = plt.figure(figsize=(10, 4), dpi=80)
@@ -25,6 +19,6 @@ def plot_df(d, ylabel = '', xlabel = '', title = '', interactive = False, rotate
         plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
     ax=plt.gca()
-    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%d%b\n%y'))
+    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:00\n %d-%b'))
 
 
