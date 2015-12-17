@@ -9,6 +9,7 @@ __pycache__/
 *.ipynb_checkpoints
 *.gz
 *.zip
+*.dcf
 #OSX
 *.DS_Store
 
