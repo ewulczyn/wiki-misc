@@ -1,2 +1,0 @@
-12|Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Twitterbot/1.1 Chrome/37.0.2062.124 Safari/537.36|path|&campaign=C14_enUS_dsk_FR&result=show&country=US&uselang=en&project=wikipedia&db=enwiki&bucket=1&anonymous=true&device=desktop
-12|Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) YandexBot Chrome/37.0.2062.124 Safari/537.36|path|&campaign=C14_enUS_dsk_FR&result=show&country=US&uselang=en&project=wikipedia&db=enwiki&bucket=1&anonymous=true&device=desktop

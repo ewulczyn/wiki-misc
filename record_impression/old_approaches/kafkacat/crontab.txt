@@ -1,3 +1,0 @@
-MAILTO=ewulczyn@wikimedia.org
-* * * * * python  /home/ellery/record_impression/record_impression.py
-
