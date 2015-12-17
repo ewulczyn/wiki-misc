@@ -12,6 +12,9 @@ __pycache__/
 #OSX
 *.DS_Store
 
+# sublime
+*.sublime-project
+*.sublime-workspace
 
 # C extensions
 *.so
