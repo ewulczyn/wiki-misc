@@ -9,14 +9,7 @@ import traceback
 import sys
 
 
-def query_through_tunnel(port,cnf_path, query, params):
-    conn = pymysql.connect(host="127.0.0.1", port=port, read_default_file=cnf_path)
-    cursor = conn.cursor(pymysql.cursors.DictCursor)
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    conn.close()
-    return mysql_to_pandas(rows)
-
+##################### Query Prod DB with pymysql #####################
 
 def mysql_to_pandas(dicts):
     dmaster = {}
@@ -32,6 +25,18 @@ def mysql_to_pandas(dicts):
     return pd.DataFrame(dmaster)
 
 
+
+# From Local Machine via ssh tunnel #
+
+def query_through_tunnel(port,cnf_path, query, params):
+    conn = pymysql.connect(host="127.0.0.1", port=port, read_default_file=cnf_path)
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    return mysql_to_pandas(rows)
+
+
 def query_lutetium(query, params):
     #ssh lutetium
     return query_through_tunnel(8000, "~/.lutetium.cnf", query, params)
@@ -45,7 +50,14 @@ def query_s1(query, params):
     return query_through_tunnel(8002, "~/.stat3.cnf", query, params)
 
 
+# From Local Machine via ssh #
 
+def query_analytics_store_ssh(query, file_name):
+    cmd = """ssh stat1002.eqiad.wmnet "mysql --defaults-file=/etc/mysql/conf.d/analytics-research-client.cnf -h analytics-store.eqiad.wmnet -u research -e \\" """ +query+ """ \\" --socket  /tmp/mysql.sock  "> """+ file_name
+    os.system(cmd)
+    d = pd.read_csv(file_name,  sep='\t')
+    os.system('rm ' + file_name)
+    return d
 
 def query_lutetium_ssh(query, file_name):
     try:
@@ -72,35 +84,17 @@ def query_lutetium_robust(query, params):
         file_name = str(hashlib.md5(query.encode()).hexdigest())
         return query_lutetium_ssh(query, file_name)
     
+# from stat machine #
 
-def query_hive_ssh(query, file_name, priority = False, delete = True):
-    if priority:
-        query = "SET mapreduce.job.queuename=priority;" + query
-    cmd = """ssh stat1002.eqiad.wmnet "hive -e \\" """ +query+ """ \\" "> """ + file_name
-    os.system(cmd)
-    d = pd.read_csv(file_name,  sep='\t')
-    if delete:
-        os.system('rm ' + file_name)
-    return d
+def query_db_from_stat(host,query, params):
+    conn = pymysql.connect(host =host, read_default_file="/etc/mysql/conf.d/analytics-research-client.cnf")
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    return mysql_to_pandas(rows)
 
-
-def execute_hive_expression(query, priority = False):
-    if priority:
-        query = "SET mapreduce.job.queuename=priority;" + query
-    cmd = """ssh stat1002.eqiad.wmnet "hive -e \\" """ +query+ """ \\" "> """ + 'hive_exec_dummy'
-    os.system(cmd)
-    
-
-
-
-def query_stat_ssh(query, file_name):
-    cmd = """ssh stat1002.eqiad.wmnet "mysql --defaults-file=/etc/mysql/conf.d/analytics-research-client.cnf -h analytics-store.eqiad.wmnet -u research -e \\" """ +query+ """ \\" --socket  /tmp/mysql.sock  "> """+ file_name
-    os.system(cmd)
-    d = pd.read_csv(file_name,  sep='\t')
-    os.system('rm ' + file_name)
-    return d
-
-
+##################### Query Hive #######################
 
 def get_hive_timespan(start, stop, hour = False):
     start = dateutil.parser.parse(start)
@@ -160,3 +154,47 @@ def get_time_limits(start = None, stop = None, month_delta = 36):
     params['stop_hour'] = params['stop_dt'].hour
 
     return params
+
+# From Local Machine via ssh #
+
+def query_hive_ssh(query, file_name, priority = False, delete = True, delim = '\t', quoting=0):
+    if priority:
+        query = "SET mapreduce.job.queuename=priority;" + query
+    cmd = """ssh stat1002.eqiad.wmnet "beeline -e \\" """ +query+ """ \\" "> """ + file_name
+    os.system(cmd)
+    d = pd.read_csv(file_name,  sep=delim, quoting = quoting)
+    if delete:
+        os.system('rm ' + file_name)
+    return d
+
+
+def execute_hive_expression(query, priority = False):
+    if priority:
+        query = "SET mapreduce.job.queuename=priority;" + query
+    cmd = """ssh stat1002.eqiad.wmnet "beeline -e \\" """ +query+ """ \\" "> """ + 'hive_exec_dummy'
+    os.system(cmd)
+    
+
+# From stat directly #
+
+def exec_hive_stat2(query, priority = False):
+    if priority:
+        query = "SET mapreduce.job.queuename=priority;" + query
+    cmd = """hive -e \" """ +query+ """ \" """ 
+    os.system(cmd)
+
+def query_hive_stat2(query, file_name, priority = False, delete = True, delim = '\t', quoting=0):
+    if priority:
+        query = "SET mapreduce.job.queuename=priority;" + query
+    cmd = """hive -e \" """ +query+ """ \" """ 
+    os.system(cmd)
+    d = pd.read_csv(file_name,  sep=delim, quoting = quoting)
+    if delete:
+        os.system('rm ' + file_name)
+    return d
+
+
+
+
+
+

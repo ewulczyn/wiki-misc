@@ -10,8 +10,14 @@ def epoch_and_batch_iter(X,y, batch_size, num_epochs):
 
 
 def batch_iter(X, y, batch_size):
-    X = X.values
-    y = y.values
+
+    if not isinstance(y, np.ndarray):
+        y = y.values
+
+    if not isinstance(X, np.ndarray):
+        X = X.values
+
+    
     m = len(y)
     num_batches_per_epoch = int(float(m)/batch_size) + 1
 

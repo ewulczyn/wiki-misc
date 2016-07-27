@@ -4,6 +4,9 @@ from numpy.random import  beta
 import numpy as np
 from statsmodels.stats.power import tt_ind_solve_power
 from numpy.random import dirichlet
+import pandas as pd
+import matplotlib.pyplot as plt
+
 
 
 
@@ -19,48 +22,6 @@ def remove_outliers(d):
     """takes in a padas series of real numbers and removes outlier"""
     return d[np.abs(d-d.mean()) <= (3*d.std())]
 
-
-
-def difference_in_means_confidence_interval(A_donation_amounts, A_num_events, B_donation_amounts, B_num_events, alpha = 0.05):
-    """
-
-    Args:
-        A_donation_amounts, B_donation_amounts : pandas.Series of dollar donations
-        A_num_events, B_num_events: int , usually either number of clicks or impressions
-
-    Keyword arguments:
-        alpha -- significance level
-
-    Returns:
-
-    """
-
-    #need special variance function, since we are representing 0 values as a count
-    def var(u, n, counts):
-        sss = 0.0
-        for index, value in counts.iteritems():
-            sss+= value*(u-index)**2
-        return sss / n
-
-
-    xbar1 = A_donation_amounts.sum() / A_num_events
-    xbar2 = B_donation_amounts.sum() / B_num_events
-
-    n1 = A_num_events-1
-    n2 = B_num_events-1
-
-    counts1 = A_donation_amounts.value_counts()
-    counts1.set_value(0, A_num_events - A_donation_amounts.shape[0])
-    counts2 = B_donation_amounts.value_counts()
-    counts2.set_value(0, B_num_events - B_donation_amounts.shape[0])
-
-    sigma1 = var(xbar1, n1, counts1)
-    sigma2 = var(xbar2, n2, counts2)
-
-    se = np.sqrt(sigma1*sigma1/n1 + sigma2*sigma2/n2)
-    zcrit = norm.ppf(1.0- alpha/2.0)
-    error = zcrit * se
-    return (float(xbar1 - xbar2 - error), float(xbar1 -xbar2+ error))
    
 
 def classic_difference_in_means_ci(a_value_counts, b_value_counts, alpha = 0.05):
@@ -106,6 +67,58 @@ def get_beta_dist(num_events, num_trials, num_samples = 50000):
 
 def bayesian_ci(dist, conf):
     return (np.percentile(dist, (100.0 - conf)/2.0 ), np.percentile(dist, conf + (100.0 - conf)/2.0 ))
+
+
+def custom_rate_stats(a_num_events, a_num_trials, b_num_events, b_num_trials, conf=95, plot =True):
+    a_dist = get_beta_dist(a_num_events, a_num_trials)
+    b_dist = get_beta_dist(b_num_events, b_num_trials)
+    d = pd.DataFrame.from_dict({'A':a_dist, 'B':b_dist})
+    return print_stats(d, conf, plot)
+
+
+def print_stats(dists, conf, plot):
+
+    """
+    Helper function to create a pandas datframe with rate statistics
+    """
+
+    if plot:
+        plot_dist(dists)
+    result_df = pd.DataFrame()
+
+    def f(d):
+        rci = bayesian_ci(d, conf)
+        return "(%0.6f, %0.6f)" % (rci[0], rci[1])
+
+    result_df['CI'] = dists.apply(f)
+
+    def f(d):
+        return d.idxmax()
+    best = dists.apply(f, axis=1)
+    result_df['P(Winner)'] = best.value_counts() / best.shape[0]
+    result_df = result_df.sort('P(Winner)', ascending=False)
+
+    def f(d):
+        ref_d = dists[result_df.index[0]]
+        lift_ci = bayesian_ci(100.0 * ((ref_d - d) / d), conf)
+        return "(%0.2f%%, %0.2f%%)" % (lift_ci[0], lift_ci[1])
+
+    result_df['Winners Lift'] = dists.apply(f)
+
+    return result_df[['P(Winner)', 'Winners Lift', 'CI']]
+
+def plot_dist(dists):
+    """
+    Helper function to plot the probability distribution over
+    the donation rates (bayesian formalism)
+    """
+    fig, ax = plt.subplots(1, 1, figsize=(13, 3))
+
+    bins = 50
+    for name in dists.columns:
+        ax.hist(dists[name], bins=bins, alpha=0.6, label=name, normed=True)
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    
 
 
 def get_multinomial_expectation_dist(counts, alpha = None, num_samples = 50000):

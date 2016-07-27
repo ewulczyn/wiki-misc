@@ -3,7 +3,7 @@ import copy
 from sklearn.cross_validation import train_test_split
 import sklearn
 from scipy.stats import spearmanr
-from sklearn.metrics import f1_score, roc_auc_score,accuracy_score, make_scorer
+from sklearn.metrics import f1_score, roc_auc_score, accuracy_score, make_scorer
 from sklearn.metrics import r2_score, mean_squared_error
 from pprint import pprint
 
@@ -15,6 +15,7 @@ def f1(x, y):
     print ('F1: %2.5f' % sr)
     return sr
 
+# WARNING USES DISCRETE PREDICTION VALUES AND RESULTS IN INCORRECT ROC
 def auc(y_true,y_pred):
     roc = roc_auc_score(y_true, y_pred)
     print ('ROC: %2.5f \n' % roc)
@@ -37,7 +38,7 @@ def multi_scorer_classification():
 
 def spearman(x, y):
     sr = spearmanr(x, y)[0]
-    print ('Spearman: %2.5f \n' % sr)
+    #print ('Spearman: %2.5f \n' % sr)
     return sr
 
 def RMSE(y_true,y_pred):
@@ -60,28 +61,26 @@ def multi_scorer_regression():
     return make_scorer(multi_score_regression, greater_is_better=True) # change for false if using MSE
 
   
-def cv (X, y, folds, alg, param_grid, regression):
+def cv (X, y, folds, alg, param_grid, scoring, regression, n_jobs = 1):
     """
     Determine the best model via cross validation. This should be run on training data.
     """
-    if regression:
-        scoring = multi_scorer_regression()
-    else:
-        scoring = multi_scorer_classification()
         
     print ("\n\n\nDoing Gridsearch\n")
 
     kfold_cv = cross_validation.KFold(X.shape[0], n_folds=folds, shuffle=True)
-    model = grid_search.GridSearchCV(cv  = kfold_cv, estimator = alg, param_grid = param_grid, scoring = scoring, n_jobs=1)
-    model = model.fit(X,y)
+    model = grid_search.GridSearchCV(cv  = kfold_cv, estimator = alg, param_grid = param_grid, scoring = scoring, n_jobs=n_jobs, refit=True)
+    
     # model trained on all data
+    model.fit(X,y)
     y_pred = model.predict(X)
+    y_proba = get_scores(model,X)
     
     if regression:
         print ("Best Model Train RMSE: %f" % rmse(y, y_pred))
         print ("Best Model Train Spearman %f" % spearman(y, y_pred))
     else:
-        print ("Best Model Train AUC: %f" % roc_auc_score(y, y_pred))
+        print ("Best Model Train AUC: %f" % roc_auc_score(y, y_proba))
         print ("Best Model Train F1 %f" % f1_score(y, y_pred))
         print ("Best Model Train Accuracy %f" % accuracy_score(y, y_pred))
         
@@ -167,7 +166,7 @@ def evaluate(X, y, alg, regression, retrain_model = False, verbose = False, X_te
         model =  alg.fit(X,y)
         
          
-    return model, metrics[metric]['train'], metrics[metric]['test'], metrics
+    return model, metrics
 
 
 # Needs Work in order to be generalized

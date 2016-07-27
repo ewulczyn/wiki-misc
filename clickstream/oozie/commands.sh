@@ -1,4 +1,4 @@
-ssh -v bast1001.wikimedia.org
+ ssh -v bast1001.wikimedia.org
 
 
 rsync -rv ~/wmf/clickstream/oozie/ stat1002.eqiad.wmnet:~/wmf/clickstream/oozie
