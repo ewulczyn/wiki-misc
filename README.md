@@ -1,4 +1,3 @@
-wmf
+Collection of miscellaneous project stubs for work at WMF
 ===
 
-Collection of Analytics Code for work at the Wikimedia Foundation
